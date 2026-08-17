@@ -13,7 +13,7 @@ export async function GET() {
 
     const periods = await sql`
       SELECT id, start_date::text AS start_date, end_date::text AS end_date, initial_kwh, goal_kwh,
-             tariff_rate, tariff_flag, flag_surcharge_rate
+             tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais
       FROM periods
       ORDER BY created_at DESC
       LIMIT 1
@@ -49,6 +49,7 @@ export async function GET() {
         tariff_rate: period.tariff_rate === null ? null : Number(period.tariff_rate),
         tariff_flag: period.tariff_flag ?? null,
         flag_surcharge_rate: period.flag_surcharge_rate === null ? null : Number(period.flag_surcharge_rate),
+        fixed_fees_reais: period.fixed_fees_reais === null ? null : Number(period.fixed_fees_reais),
       },
       readings.map((r: any) => ({
         id: r.id,

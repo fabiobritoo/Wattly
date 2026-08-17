@@ -207,7 +207,10 @@ export default function DashboardPage() {
         </p>
         {s.currentCostReais != null && (
           <p style={{ fontSize: 14, fontWeight: 600, color: "var(--color-secondary)", margin: "2px 0 0" }}>
-            ≈ {fmtBRL(s.currentCostReais)}
+            ≈ {fmtBRL(s.currentCostReais)}{" "}
+            <span style={{ fontSize: 11, fontWeight: 500, color: "var(--color-text-muted)" }}>
+              (só energia, sem taxas fixas)
+            </span>
           </p>
         )}
         {s.todayVariationKwh !== null && (
@@ -275,7 +278,10 @@ export default function DashboardPage() {
           </p>
           {s.forecastCostReais != null && (
             <p style={{ fontSize: 14, fontWeight: 600, color: "var(--color-secondary)", margin: "2px 0 0" }}>
-              ≈ {fmtBRL(s.forecastCostReais)}
+              ≈ {fmtBRL(s.forecastCostReais)}{" "}
+              <span style={{ fontSize: 11, fontWeight: 500, color: "var(--color-text-muted)" }}>
+                (conta estimada)
+              </span>
             </p>
           )}
           <div className="grid-2" style={{ marginTop: 10 }}>

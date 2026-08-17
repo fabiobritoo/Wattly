@@ -51,3 +51,16 @@ cada mudança relevante antes de dar push.
 - Esse valor é só uma estimativa do custo de energia (tarifa × consumo +
   adicional de bandeira). Contas reais também incluem impostos, taxas de
   distribuição e outros itens que o app não tem como saber.
+
+### v3.1 — calibrado com uma fatura real
+
+- **Tarifa = TUSD + TE somadas.** O boleto separa "Consumo-TUSD" e
+  "Consumo-TE" em duas linhas com preços unitários diferentes; a tarifa que
+  o app pede é a soma dos dois.
+- **Taxas fixas do período (R$)**: novo campo para itens do boleto que não
+  escalam com o consumo — Contribuição de Iluminação Pública (COSIP),
+  pequenas taxas como ICMS-CDE, etc. Somado uma única vez na "conta
+  estimada" (previsão final), não no valor parcial do consumo até agora.
+- Validado contra uma fatura real: com TUSD+TE somadas, a bandeira
+  recalculada como R$/100kWh e as taxas fixas somadas à parte, a estimativa
+  bateu com o total real a menos de R$0,01 de diferença.

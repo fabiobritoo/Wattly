@@ -61,6 +61,10 @@ export async function migrate() {
   await sql`ALTER TABLE periods ADD COLUMN IF NOT EXISTS tariff_rate NUMERIC`;
   await sql`ALTER TABLE periods ADD COLUMN IF NOT EXISTS tariff_flag TEXT`;
   await sql`ALTER TABLE periods ADD COLUMN IF NOT EXISTS flag_surcharge_rate NUMERIC`;
+  // Fixed charges that show up on the real bill but don't scale with kWh —
+  // public lighting contribution (COSIP), small tax line items, etc. Added
+  // once to the final estimate rather than prorated across consumption.
+  await sql`ALTER TABLE periods ADD COLUMN IF NOT EXISTS fixed_fees_reais NUMERIC`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS readings (

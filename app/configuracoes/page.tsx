@@ -15,6 +15,7 @@ type Period = {
   tariff_rate: number | null;
   tariff_flag: TariffFlag | null;
   flag_surcharge_rate: number | null;
+  fixed_fees_reais: number | null;
 };
 
 const FLAG_LABELS: Record<TariffFlag, string> = {
@@ -47,6 +48,7 @@ export default function ConfiguracoesPage() {
   const [tariffRate, setTariffRate] = useState("");
   const [tariffFlag, setTariffFlag] = useState<TariffFlag>("verde");
   const [flagSurcharge, setFlagSurcharge] = useState("");
+  const [fixedFees, setFixedFees] = useState("");
 
   function fillFormFrom(p: Period) {
     setStartDate(p.start_date);
@@ -56,6 +58,7 @@ export default function ConfiguracoesPage() {
     setTariffRate(p.tariff_rate != null ? String(p.tariff_rate) : "");
     setTariffFlag(p.tariff_flag ?? "verde");
     setFlagSurcharge(p.flag_surcharge_rate != null ? String(p.flag_surcharge_rate) : "");
+    setFixedFees(p.fixed_fees_reais != null ? String(p.fixed_fees_reais) : "");
   }
 
   function dayAfter(dateStr: string) {
@@ -95,9 +98,13 @@ export default function ConfiguracoesPage() {
       // as a starting point — but not the flag/surcharge, since the
       // "bandeira tarifária" changes monthly and shouldn't be assumed.
       setTariffRate(period.tariff_rate != null ? String(period.tariff_rate) : "");
+      // Fixed fees (public lighting, etc.) also tend to repeat month to
+      // month for the same address, so carry that over too.
+      setFixedFees(period.fixed_fees_reais != null ? String(period.fixed_fees_reais) : "");
     } else {
       setStartDate("");
       setTariffRate("");
+      setFixedFees("");
     }
     setEndDate("");
     setInitialKwh("");
@@ -130,6 +137,7 @@ export default function ConfiguracoesPage() {
           tariff_rate: tariffRate ? Number(tariffRate) : null,
           tariff_flag: tariffFlag,
           flag_surcharge_rate: flagSurcharge ? Number(flagSurcharge) : null,
+          fixed_fees_reais: fixedFees ? Number(fixedFees) : null,
         }),
       });
       const data = await res.json();
@@ -262,10 +270,14 @@ export default function ConfiguracoesPage() {
               type="number"
               inputMode="decimal"
               step="0.0001"
-              placeholder="Ex: 0.85 — veja no seu último boleto"
+              placeholder="Ex: 1.0754"
               value={tariffRate}
               onChange={(e) => setTariffRate(e.target.value)}
             />
+            <p style={{ fontSize: 12, color: "var(--color-text-muted)", margin: "-2px 0 0" }}>
+              No boleto, some os itens "Consumo-TUSD" e "Consumo-TE" (preço unitário de cada um) — o
+              resultado é essa tarifa.
+            </p>
           </div>
 
           {tariffRate && (
@@ -293,12 +305,33 @@ export default function ConfiguracoesPage() {
                     type="number"
                     inputMode="decimal"
                     step="0.01"
-                    placeholder="Confira no site da sua distribuidora ou no boleto"
+                    placeholder="Ex: 2.53"
                     value={flagSurcharge}
                     onChange={(e) => setFlagSurcharge(e.target.value)}
                   />
+                  <p style={{ fontSize: 12, color: "var(--color-text-muted)", margin: "-2px 0 0" }}>
+                    No boleto, pegue o valor de "Acrés. Band." (em R$) e calcule: valor ÷ kWh
+                    consumidos × 100.
+                  </p>
                 </div>
               )}
+
+              <div className="field">
+                <label htmlFor="fixed-fees">Taxas fixas do período (R$) — opcional</label>
+                <input
+                  id="fixed-fees"
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  placeholder="Ex: 29.45"
+                  value={fixedFees}
+                  onChange={(e) => setFixedFees(e.target.value)}
+                />
+                <p style={{ fontSize: 12, color: "var(--color-text-muted)", margin: "-2px 0 0" }}>
+                  Itens do boleto que não variam com o consumo, como "Ilum. Púb. Municipal" e pequenas
+                  taxas (ICMS-CDE, etc). Some tudo isso e informe aqui.
+                </p>
+              </div>
             </>
           )}
 

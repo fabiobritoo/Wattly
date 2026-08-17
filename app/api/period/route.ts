@@ -13,7 +13,7 @@ export async function GET() {
     const sql = getSql();
     const rows = await sql`
       SELECT id, start_date::text AS start_date, end_date::text AS end_date, initial_kwh, goal_kwh,
-             tariff_rate, tariff_flag, flag_surcharge_rate
+             tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais
       FROM periods
       ORDER BY created_at DESC
       LIMIT 1
@@ -37,6 +37,7 @@ export async function POST(req: Request) {
       tariff_rate,
       tariff_flag,
       flag_surcharge_rate,
+      fixed_fees_reais,
     } = body ?? {};
 
     if (!start_date || !end_date || initial_kwh === undefined || initial_kwh === null) {
@@ -61,6 +62,7 @@ export async function POST(req: Request) {
       tariffFlagValue && tariffFlagValue !== "verde" && flag_surcharge_rate !== "" && flag_surcharge_rate !== undefined
         ? flag_surcharge_rate
         : null;
+    const fixedFeesValue = fixed_fees_reais === "" || fixed_fees_reais === undefined ? null : fixed_fees_reais;
 
     let rows;
     if (id) {
@@ -73,17 +75,18 @@ export async function POST(req: Request) {
             tariff_rate = ${tariffRateValue},
             tariff_flag = ${tariffFlagValue},
             flag_surcharge_rate = ${flagSurchargeValue},
+            fixed_fees_reais = ${fixedFeesValue},
             updated_at = now()
         WHERE id = ${id}
         RETURNING id, start_date::text AS start_date, end_date::text AS end_date, initial_kwh, goal_kwh,
-                  tariff_rate, tariff_flag, flag_surcharge_rate
+                  tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais
       `;
     } else {
       rows = await sql`
-        INSERT INTO periods (start_date, end_date, initial_kwh, goal_kwh, tariff_rate, tariff_flag, flag_surcharge_rate)
-        VALUES (${start_date}, ${end_date}, ${initial_kwh}, ${goalValue}, ${tariffRateValue}, ${tariffFlagValue}, ${flagSurchargeValue})
+        INSERT INTO periods (start_date, end_date, initial_kwh, goal_kwh, tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais)
+        VALUES (${start_date}, ${end_date}, ${initial_kwh}, ${goalValue}, ${tariffRateValue}, ${tariffFlagValue}, ${flagSurchargeValue}, ${fixedFeesValue})
         RETURNING id, start_date::text AS start_date, end_date::text AS end_date, initial_kwh, goal_kwh,
-                  tariff_rate, tariff_flag, flag_surcharge_rate
+                  tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais
       `;
     }
 

@@ -6,9 +6,10 @@ export type Period = {
   end_date: string;
   initial_kwh: number;
   goal_kwh: number | null;
-  tariff_rate: number | null; // R$ per kWh
+  tariff_rate: number | null; // R$ per kWh (sum of TUSD + TE from the bill)
   tariff_flag: TariffFlag | null;
   flag_surcharge_rate: number | null; // R$ per 100 kWh, only applies when tariff_flag !== "verde"
+  fixed_fees_reais: number | null; // flat charges independent of consumption (COSIP, small taxes, etc.)
 };
 
 export type Reading = {
@@ -38,8 +39,8 @@ export type Summary = {
   worstDay: DayConsumption | null; // highest-consumption day
   alertLevel: "none" | "warning" | "danger";
   alertMessage: string | null;
-  currentCostReais: number | null; // estimated bill for consumption so far
-  forecastCostReais: number | null; // estimated bill at forecasted period end
+  currentCostReais: number | null; // estimated energy cost for consumption so far (no fixed fees yet)
+  forecastCostReais: number | null; // estimated full bill at forecasted period end (includes fixed fees)
 };
 
 function daysBetween(a: Date, b: Date): number {
@@ -71,18 +72,24 @@ function fmt(v: number, decimals = 1): string {
  * Estimated bill for a given consumption, using the period's tariff rate
  * plus the "bandeira tarifária" surcharge when applicable. Returns null
  * when no tariff rate has been configured for the period (financial
- * tracking is opt-in). This is an estimate of the energy charge only — real
- * bills also include taxes, distribution fees, and other line items this
- * app has no way to know.
+ * tracking is opt-in). This is an estimate of the energy charge (+ flag +
+ * optional fixed fees) — real bills may still include other small taxes
+ * this app has no way to know about.
+ *
+ * `includeFixedFees` controls whether the flat, non-proportional charges
+ * (public lighting contribution, small tax line items) are added — these
+ * apply once per bill, not per kWh, so they only make sense on a "final
+ * bill" estimate, not on a "cost of what I've used so far" figure.
  */
-function estimateCostReais(kwh: number, period: Period): number | null {
+function estimateCostReais(kwh: number, period: Period, includeFixedFees: boolean): number | null {
   if (period.tariff_rate == null) return null;
   const energyCost = kwh * Number(period.tariff_rate);
   const flagCost =
     period.tariff_flag && period.tariff_flag !== "verde" && period.flag_surcharge_rate != null
       ? (kwh / 100) * Number(period.flag_surcharge_rate)
       : 0;
-  return energyCost + flagCost;
+  const fixedCost = includeFixedFees && period.fixed_fees_reais != null ? Number(period.fixed_fees_reais) : 0;
+  return energyCost + flagCost + fixedCost;
 }
 
 /**
@@ -242,7 +249,7 @@ export function computeSummary(period: Period, readings: Reading[]): Summary {
     worstDay,
     alertLevel,
     alertMessage,
-    currentCostReais: estimateCostReais(accumulatedKwh, period),
-    forecastCostReais: forecastFinalKwh != null ? estimateCostReais(forecastFinalKwh, period) : null,
+    currentCostReais: estimateCostReais(accumulatedKwh, period, false),
+    forecastCostReais: forecastFinalKwh != null ? estimateCostReais(forecastFinalKwh, period, true) : null,
   };
 }

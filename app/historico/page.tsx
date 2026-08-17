@@ -10,7 +10,7 @@ type Summary = {
   goalExceededNow: boolean;
   bestDay: { date: string; consumption: number } | null;
   worstDay: { date: string; consumption: number } | null;
-  currentCostReais: number | null;
+  forecastCostReais: number | null;
 };
 
 function fmtBRL(v: number | null | undefined) {
@@ -123,9 +123,9 @@ export default function HistoricoPage() {
                 <p className="meter-value-md" style={{ marginTop: 10 }}>
                   {fmtKwh(s.accumulatedKwh)} <span className="meter-unit">kWh</span>
                 </p>
-                {s.currentCostReais != null && (
+                {s.forecastCostReais != null && (
                   <p style={{ fontSize: 13, fontWeight: 600, color: "var(--color-secondary)", margin: "2px 0 0" }}>
-                    ≈ {fmtBRL(s.currentCostReais)}
+                    ≈ {fmtBRL(s.forecastCostReais)}
                   </p>
                 )}
 
