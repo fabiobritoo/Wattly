@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import InstallGuide, { useIsInstalled } from "@/components/InstallGuide";
+import ReadingsImport from "@/components/ReadingsImport";
 import { APP_VERSION } from "@/lib/version";
 
 type TariffFlag = "verde" | "amarela" | "vermelha_1" | "vermelha_2";
@@ -25,8 +26,16 @@ const FLAG_LABELS: Record<TariffFlag, string> = {
   vermelha_2: "Vermelha — patamar 2",
 };
 
+type TariffDefaults = {
+  tariff_rate: number | null;
+  tariff_flag: TariffFlag | null;
+  flag_surcharge_rate: number | null;
+  fixed_fees_reais: number | null;
+};
+
 export default function ConfiguracoesPage() {
   const [period, setPeriod] = useState<Period | null>(null);
+  const [defaults, setDefaults] = useState<TariffDefaults | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +70,13 @@ export default function ConfiguracoesPage() {
     setFixedFees(p.fixed_fees_reais != null ? String(p.fixed_fees_reais) : "");
   }
 
+  function fillFormFromDefaults(d: TariffDefaults | null) {
+    setTariffRate(d?.tariff_rate != null ? String(d.tariff_rate) : "");
+    setTariffFlag(d?.tariff_flag ?? "verde");
+    setFlagSurcharge(d?.flag_surcharge_rate != null ? String(d.flag_surcharge_rate) : "");
+    setFixedFees(d?.fixed_fees_reais != null ? String(d.fixed_fees_reais) : "");
+  }
+
   function dayAfter(dateStr: string) {
     const d = new Date(dateStr + "T00:00:00Z");
     d.setUTCDate(d.getUTCDate() + 1);
@@ -69,12 +85,24 @@ export default function ConfiguracoesPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch("/api/period", { cache: "no-store" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Erro ao carregar período.");
-      if (data.period) {
-        setPeriod(data.period);
-        fillFormFrom(data.period);
+      const [periodRes, defaultsRes] = await Promise.all([
+        fetch("/api/period", { cache: "no-store" }),
+        fetch("/api/tariff-defaults", { cache: "no-store" }),
+      ]);
+      const periodData = await periodRes.json();
+      if (!periodRes.ok) throw new Error(periodData.error || "Erro ao carregar período.");
+      const defaultsData = await defaultsRes.json();
+      if (!defaultsRes.ok) throw new Error(defaultsData.error || "Erro ao carregar padrões.");
+
+      setDefaults(defaultsData.defaults ?? null);
+
+      if (periodData.period) {
+        setPeriod(periodData.period);
+        fillFormFrom(periodData.period);
+      } else {
+        // No period yet — start the form from the standing tariff defaults
+        // instead of blank fields.
+        fillFormFromDefaults(defaultsData.defaults ?? null);
       }
       setError(null);
     } catch (err) {
@@ -94,23 +122,15 @@ export default function ConfiguracoesPage() {
     setError(null);
     if (period) {
       setStartDate(dayAfter(period.end_date));
-      // Tariff rate tends to stay similar across periods, so carry it over
-      // as a starting point — but not the flag/surcharge, since the
-      // "bandeira tarifária" changes monthly and shouldn't be assumed.
-      setTariffRate(period.tariff_rate != null ? String(period.tariff_rate) : "");
-      // Fixed fees (public lighting, etc.) also tend to repeat month to
-      // month for the same address, so carry that over too.
-      setFixedFees(period.fixed_fees_reais != null ? String(period.fixed_fees_reais) : "");
     } else {
       setStartDate("");
-      setTariffRate("");
-      setFixedFees("");
     }
     setEndDate("");
     setInitialKwh("");
     setGoalKwh("");
-    setTariffFlag("verde");
-    setFlagSurcharge("");
+    // Always start a new period from the standing defaults, not from
+    // whatever the previous period happened to have.
+    fillFormFromDefaults(defaults);
   }
 
   function cancelNewPeriod() {
@@ -146,6 +166,29 @@ export default function ConfiguracoesPage() {
       setMode("edit");
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
+
+      // Keep the standing defaults in sync with whatever tariff info was
+      // just saved, so the next new period starts from these same values
+      // without having to type them again. Best-effort — a failure here
+      // shouldn't block the period save that already succeeded.
+      if (tariffRate) {
+        try {
+          const defaultsRes = await fetch("/api/tariff-defaults", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              tariff_rate: Number(tariffRate),
+              tariff_flag: tariffFlag,
+              flag_surcharge_rate: flagSurcharge ? Number(flagSurcharge) : null,
+              fixed_fees_reais: fixedFees ? Number(fixedFees) : null,
+            }),
+          });
+          const defaultsData = await defaultsRes.json();
+          if (defaultsRes.ok) setDefaults(defaultsData.defaults);
+        } catch {
+          // Non-critical — ignore.
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro desconhecido.");
     } finally {
@@ -364,6 +407,10 @@ export default function ConfiguracoesPage() {
           </div>
         </form>
       </div>
+
+      {period && mode === "edit" && (
+        <ReadingsImport periodId={period.id} onImported={load} />
+      )}
 
       {!installed && (
         <div className="card">

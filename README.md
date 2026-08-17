@@ -64,3 +64,19 @@ cada mudança relevante antes de dar push.
 - Validado contra uma fatura real: com TUSD+TE somadas, a bandeira
   recalculada como R$/100kWh e as taxas fixas somadas à parte, a estimativa
   bateu com o total real a menos de R$0,01 de diferença.
+
+### v3.2 — padrões de tarifa e importação de leituras
+
+- **Padrões de tarifa persistentes**: os valores calibrados com a fatura
+  real (tarifa 1.0754 R$/kWh, bandeira amarela R$2.5253/100kWh, taxas
+  fixas R$29.45) agora ficam salvos como padrão de verdade — não é mais só
+  um placeholder de exemplo. Uma nova tabela `tariff_defaults` guarda esses
+  valores; a migração automática já os semeia e retroalimenta qualquer
+  período existente que ainda não tinha tarifa configurada.
+- Sempre que uma tarifa é salva em um período, o padrão é atualizado junto
+  — então o próximo "Iniciar novo período" já vem pré-preenchido.
+- **Importar leituras via CSV**: em Ajustes, novo card para subir um
+  arquivo CSV (colunas tipo Data/Hora/Leitura_kWh) e importar em massa
+  pro período atual, com opção de substituir as leituras já existentes.
+  Parser tolera variações de cabeçalho e ignora colunas de consumo/delta
+  (o app recalcula isso sozinho a partir da leitura bruta do medidor).

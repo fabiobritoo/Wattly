@@ -100,5 +100,39 @@ export async function migrate() {
     )
   `;
 
+  // Single-row table holding the standing tariff defaults, so the person
+  // doesn't have to re-type their rate/flag/fixed fees every time they
+  // start a new period. New periods are pre-filled from here.
+  await sql`
+    CREATE TABLE IF NOT EXISTS tariff_defaults (
+      id INTEGER PRIMARY KEY DEFAULT 1,
+      tariff_rate NUMERIC,
+      tariff_flag TEXT,
+      flag_surcharge_rate NUMERIC,
+      fixed_fees_reais NUMERIC,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      CONSTRAINT tariff_defaults_singleton CHECK (id = 1)
+    )
+  `;
+  // Seeded once from the person's real bill (TUSD 0.72048386 + TE
+  // 0.35491782, bandeira amarela ~R$2.5253/100kWh, taxas fixas R$29.45 —
+  // iluminação pública + ICMS-CDE). Only fires if no default row exists yet.
+  await sql`
+    INSERT INTO tariff_defaults (id, tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais)
+    VALUES (1, 1.07540168, 'amarela', 2.5253, 29.45)
+    ON CONFLICT (id) DO NOTHING
+  `;
+  // Backfill: any period saved before a tariff was configured gets these
+  // same defaults, so the current period reflects them immediately too —
+  // idempotent, since it only ever touches rows that are still unset.
+  await sql`
+    UPDATE periods
+    SET tariff_rate = 1.07540168,
+        tariff_flag = 'amarela',
+        flag_surcharge_rate = 2.5253,
+        fixed_fees_reais = 29.45
+    WHERE tariff_rate IS NULL
+  `;
+
   migrated = true;
 }
