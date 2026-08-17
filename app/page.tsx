@@ -19,6 +19,7 @@ type Summary = {
   accumulatedKwh: number;
   todayVariationKwh: number | null;
   dailyAverageKwh: number | null;
+  weeklyAverageKwh: number | null;
   daysElapsed: number;
   daysRemaining: number;
   totalDays: number;
@@ -26,6 +27,11 @@ type Summary = {
   forecastRemainingKwh: number | null;
   status: "sem_dados" | "dentro_do_esperado" | "acima_da_media" | "acima_da_meta";
   lastReadingAt: string | null;
+  goalExceededNow: boolean;
+  bestDay: { date: string; consumption: number } | null;
+  worstDay: { date: string; consumption: number } | null;
+  alertLevel: "none" | "warning" | "danger";
+  alertMessage: string | null;
 };
 
 function fmtKwh(v: number | null | undefined, decimals = 1) {
@@ -159,6 +165,22 @@ export default function DashboardPage() {
 
   return (
     <>
+      {s.alertLevel !== "none" && s.alertMessage && (
+        <div
+          className={`card ${s.alertLevel === "danger" ? "status-alert" : "status-warn"}`}
+          style={{
+            padding: "14px 16px",
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 10,
+            boxShadow: "none",
+          }}
+        >
+          <span className="status-dot" style={{ marginTop: 5, flexShrink: 0 }} />
+          <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600 }}>{s.alertMessage}</p>
+        </div>
+      )}
+
       <div className="card">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <p className="period-range">
@@ -260,6 +282,44 @@ export default function DashboardPage() {
             <span className="status-dot" />
             {statusInfo.label}
           </span>
+        </div>
+      )}
+
+      {s.hasReadings && (s.bestDay || s.worstDay || s.weeklyAverageKwh != null) && (
+        <div className="card">
+          <p className="card-label">Ritmo de consumo</p>
+
+          {s.weeklyAverageKwh != null && (
+            <div style={{ marginTop: 10 }}>
+              <span className="stat-block-label">Média semanal</span>
+              <p className="meter-value-md" style={{ marginTop: 2 }}>
+                {fmtKwh(s.weeklyAverageKwh)} <span style={{ fontSize: 13, fontWeight: 500, color: "var(--color-text-muted)" }}>kWh/semana</span>
+              </p>
+            </div>
+          )}
+
+          {(s.bestDay || s.worstDay) && (
+            <div className="grid-2" style={{ marginTop: 14 }}>
+              {s.bestDay && (
+                <div className="stat-block">
+                  <span className="stat-block-label">Melhor dia</span>
+                  <span className="meter-value-md" style={{ fontSize: 16 }}>
+                    {fmtKwh(s.bestDay.consumption)} kWh
+                  </span>
+                  <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{fmtDate(s.bestDay.date)}</span>
+                </div>
+              )}
+              {s.worstDay && (
+                <div className="stat-block">
+                  <span className="stat-block-label">Pior dia</span>
+                  <span className="meter-value-md" style={{ fontSize: 16 }}>
+                    {fmtKwh(s.worstDay.consumption)} kWh
+                  </span>
+                  <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{fmtDate(s.worstDay.date)}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

@@ -20,6 +20,7 @@ export default function ConfiguracoesPage() {
   const [saved, setSaved] = useState(false);
   const [showInstall, setShowInstall] = useState(false);
   const installed = useIsInstalled();
+  const [mode, setMode] = useState<"edit" | "new">("edit");
 
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<
@@ -32,6 +33,19 @@ export default function ConfiguracoesPage() {
   const [initialKwh, setInitialKwh] = useState("");
   const [goalKwh, setGoalKwh] = useState("");
 
+  function fillFormFrom(p: Period) {
+    setStartDate(p.start_date);
+    setEndDate(p.end_date);
+    setInitialKwh(String(p.initial_kwh));
+    setGoalKwh(p.goal_kwh != null ? String(p.goal_kwh) : "");
+  }
+
+  function dayAfter(dateStr: string) {
+    const d = new Date(dateStr + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0, 10);
+  }
+
   const load = useCallback(async () => {
     try {
       const res = await fetch("/api/period", { cache: "no-store" });
@@ -39,10 +53,7 @@ export default function ConfiguracoesPage() {
       if (!res.ok) throw new Error(data.error || "Erro ao carregar período.");
       if (data.period) {
         setPeriod(data.period);
-        setStartDate(data.period.start_date);
-        setEndDate(data.period.end_date);
-        setInitialKwh(String(data.period.initial_kwh));
-        setGoalKwh(data.period.goal_kwh != null ? String(data.period.goal_kwh) : "");
+        fillFormFrom(data.period);
       }
       setError(null);
     } catch (err) {
@@ -56,6 +67,26 @@ export default function ConfiguracoesPage() {
     load();
   }, [load]);
 
+  function startNewPeriod() {
+    setMode("new");
+    setSaved(false);
+    setError(null);
+    if (period) {
+      setStartDate(dayAfter(period.end_date));
+    } else {
+      setStartDate("");
+    }
+    setEndDate("");
+    setInitialKwh("");
+    setGoalKwh("");
+  }
+
+  function cancelNewPeriod() {
+    setMode("edit");
+    setError(null);
+    if (period) fillFormFrom(period);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -66,7 +97,7 @@ export default function ConfiguracoesPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: period?.id,
+          id: mode === "edit" ? period?.id : undefined,
           start_date: startDate,
           end_date: endDate,
           initial_kwh: Number(initialKwh),
@@ -76,6 +107,7 @@ export default function ConfiguracoesPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro ao salvar período.");
       setPeriod(data.period);
+      setMode("edit");
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err) {
@@ -139,8 +171,15 @@ export default function ConfiguracoesPage() {
 
       <div className="card">
         <p className="card-label" style={{ marginBottom: 12 }}>
-          {period ? "Editar período" : "Configurar período"}
+          {mode === "new" ? "Novo período" : period ? "Editar período atual" : "Configurar período"}
         </p>
+
+        {mode === "new" && (
+          <p style={{ fontSize: 13, color: "var(--color-text-muted)", marginBottom: 14 }}>
+            O período atual será arquivado e continua disponível na aba Histórico para comparação.
+          </p>
+        )}
+
         <form onSubmit={handleSubmit}>
           <div className="field">
             <label htmlFor="start">Data de início</label>
@@ -195,9 +234,26 @@ export default function ConfiguracoesPage() {
             </p>
           )}
 
-          <button className="btn btn-primary" type="submit" disabled={saving}>
-            {saving ? "Salvando..." : "Salvar período"}
-          </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <button className="btn btn-primary" type="submit" disabled={saving}>
+              {saving
+                ? "Salvando..."
+                : mode === "new"
+                ? "Arquivar atual e começar novo período"
+                : "Salvar período"}
+            </button>
+            {mode === "new" ? (
+              <button className="btn btn-secondary" type="button" onClick={cancelNewPeriod}>
+                Cancelar
+              </button>
+            ) : (
+              period && (
+                <button className="btn btn-secondary" type="button" onClick={startNewPeriod}>
+                  Iniciar novo período
+                </button>
+              )
+            )}
+          </div>
         </form>
       </div>
 

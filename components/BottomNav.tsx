@@ -27,6 +27,20 @@ const items = [
     ),
   },
   {
+    href: "/historico",
+    label: "Histórico",
+    icon: () => (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M4 5h16M4 10h10M4 15h16M4 20h10"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
+  },
+  {
     href: "/anotacoes",
     label: "Anotações",
     icon: () => (
