@@ -5,8 +5,7 @@ import InstallGuide, { useIsInstalled } from "@/components/InstallGuide";
 import ReadingsImport from "@/components/ReadingsImport";
 import { SettingsIcon } from "@/components/icons";
 import { APP_VERSION } from "@/lib/version";
-
-type TariffFlag = "verde" | "amarela" | "vermelha_1" | "vermelha_2";
+import { FLAG_LABELS, ANEEL_FLAG_SURCHARGE_PER_100KWH, type TariffFlag } from "@/lib/tariffFlags";
 
 type Period = {
   id: number;
@@ -18,13 +17,6 @@ type Period = {
   tariff_flag: TariffFlag | null;
   flag_surcharge_rate: number | null;
   fixed_fees_reais: number | null;
-};
-
-const FLAG_LABELS: Record<TariffFlag, string> = {
-  verde: "Verde (sem custo extra)",
-  amarela: "Amarela",
-  vermelha_1: "Vermelha — patamar 1",
-  vermelha_2: "Vermelha — patamar 2",
 };
 
 type TariffDefaults = {
@@ -334,7 +326,14 @@ export default function ConfiguracoesPage() {
                 <select
                   id="flag"
                   value={tariffFlag}
-                  onChange={(e) => setTariffFlag(e.target.value as TariffFlag)}
+                  onChange={(e) => {
+                    const flag = e.target.value as TariffFlag;
+                    setTariffFlag(flag);
+                    // Pre-fill with ANEEL's official rate for the newly
+                    // selected flag — still editable below, in case ANEEL
+                    // revises it and this hasn't been updated yet.
+                    setFlagSurcharge(flag === "verde" ? "" : String(ANEEL_FLAG_SURCHARGE_PER_100KWH[flag]));
+                  }}
                 >
                   {(Object.keys(FLAG_LABELS) as TariffFlag[]).map((flag) => (
                     <option key={flag} value={flag}>
@@ -351,14 +350,15 @@ export default function ConfiguracoesPage() {
                     id="flag-surcharge"
                     type="number"
                     inputMode="decimal"
-                    step="0.01"
-                    placeholder="Ex: 2.53"
+                    step="0.001"
+                    placeholder="Ex: 1.885"
                     value={flagSurcharge}
                     onChange={(e) => setFlagSurcharge(e.target.value)}
                   />
                   <p style={{ fontSize: 12, color: "var(--color-text-muted)", margin: "-2px 0 0" }}>
-                    No boleto, pegue o valor de "Acrés. Band." (em R$) e calcule: valor ÷ kWh
-                    consumidos × 100.
+                    Valor oficial da ANEEL para essa bandeira: R${" "}
+                    {ANEEL_FLAG_SURCHARGE_PER_100KWH[tariffFlag].toLocaleString("pt-BR", { minimumFractionDigits: 3 })}{" "}
+                    a cada 100 kWh. Já preenchido — só mude se souber de um valor mais recente.
                   </p>
                 </div>
               )}

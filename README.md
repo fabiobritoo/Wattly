@@ -124,3 +124,17 @@ e novos componentes de UI).
   (dia + mês abreviado) conectado por uma linha vertical, ponto colorido
   ao lado do texto, e botão "+ Nova anotação" fixo embaixo — no estilo do
   mockup fornecido.
+
+### v4.1.1 — valores oficiais da ANEEL para as bandeiras
+
+- O adicional de cada bandeira tarifária agora vem pré-preenchido com o
+  valor oficial da ANEEL assim que você seleciona a bandeira em Ajustes:
+  Amarela R$1,885/100kWh, Vermelha patamar 1 R$4,463/100kWh, Vermelha
+  patamar 2 R$7,877/100kWh (verde não tem acréscimo). O campo continua
+  editável, caso a ANEEL revise os valores.
+- **Correção**: o valor usado antes para a bandeira amarela (R$2,5253,
+  calibrado a partir de uma fatura específica) incluía o ICMS do estado
+  embutido, o que não é um padrão nacional válido — foi corrigido para o
+  valor-base oficial da ANEEL. A correção é aplicada automaticamente pela
+  migração a quem já tinha esse valor salvo (sem afetar quem já tinha
+  personalizado o campo para outro valor).

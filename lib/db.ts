@@ -115,11 +115,14 @@ export async function migrate() {
     )
   `;
   // Seeded once from the person's real bill (TUSD 0.72048386 + TE
-  // 0.35491782, bandeira amarela ~R$2.5253/100kWh, taxas fixas R$29.45 —
-  // iluminação pública + ICMS-CDE). Only fires if no default row exists yet.
+  // 0.35491782, taxas fixas R$29.45 — iluminação pública + ICMS-CDE).
+  // Bandeira amarela uses ANEEL's official R$1,885/100kWh base rate (see
+  // lib/tariffFlags.ts) — the R$2.5253 figure from that one bill included
+  // state ICMS on top of the base fee, which isn't a safe general default
+  // since ICMS % varies by state. Only fires if no default row exists yet.
   await sql`
     INSERT INTO tariff_defaults (id, tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais)
-    VALUES (1, 1.07540168, 'amarela', 2.5253, 29.45)
+    VALUES (1, 1.07540168, 'amarela', 1.885, 29.45)
     ON CONFLICT (id) DO NOTHING
   `;
   // Backfill: any period saved before a tariff was configured gets these
@@ -129,9 +132,24 @@ export async function migrate() {
     UPDATE periods
     SET tariff_rate = 1.07540168,
         tariff_flag = 'amarela',
-        flag_surcharge_rate = 2.5253,
+        flag_surcharge_rate = 1.885,
         fixed_fees_reais = 29.45
     WHERE tariff_rate IS NULL
+  `;
+  // Correction: the app briefly used R$2.5253/100kWh (bill-derived, with
+  // ICMS baked in) as the "amarela" default before switching to ANEEL's
+  // official R$1,885/100kWh base rate. Reset that specific old value back
+  // to the correct one — targeted so it never touches a value the person
+  // deliberately customized to something else.
+  await sql`
+    UPDATE tariff_defaults
+    SET flag_surcharge_rate = 1.885
+    WHERE tariff_flag = 'amarela' AND ROUND(flag_surcharge_rate::numeric, 4) = 2.5253
+  `;
+  await sql`
+    UPDATE periods
+    SET flag_surcharge_rate = 1.885
+    WHERE tariff_flag = 'amarela' AND ROUND(flag_surcharge_rate::numeric, 4) = 2.5253
   `;
 
   migrated = true;
