@@ -457,3 +457,36 @@ button {
   align-items: center;
   justify-content: center;
 }
+
+.readings-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.readings-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.readings-table td {
+  padding: 10px 6px 10px 0;
+  border-bottom: 1px solid var(--color-border);
+  font-family: var(--font-meter);
+  font-variant-numeric: tabular-nums;
+}
+
+.readings-table td:first-child {
+  font-family: var(--font-sans);
+  color: var(--color-text-muted);
+}
+
+.readings-table tr:last-child td {
+  border-bottom: none;
+}

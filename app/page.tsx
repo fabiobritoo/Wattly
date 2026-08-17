@@ -52,6 +52,40 @@ const statusLabels: Record<Summary["status"], { label: string; className: string
   acima_da_meta: { label: "Acima da meta", className: "status-alert" },
 };
 
+function ReadingsTable({ readings }: { readings: Reading[] }) {
+  const sorted = [...readings].sort((a, b) => (a.reading_at < b.reading_at ? -1 : 1));
+  const enriched = sorted.map((r, i) => ({
+    ...r,
+    delta: i > 0 ? r.kwh_reading - sorted[i - 1].kwh_reading : null,
+  }));
+  const lastFive = enriched.slice(-5).reverse();
+
+  if (lastFive.length === 0) {
+    return <p style={{ fontSize: 13, color: "var(--color-text-muted)" }}>Nenhuma leitura ainda.</p>;
+  }
+
+  return (
+    <table className="readings-table">
+      <thead>
+        <tr>
+          <th>Data / hora</th>
+          <th>Leitura</th>
+          <th>Variação</th>
+        </tr>
+      </thead>
+      <tbody>
+        {lastFive.map((r) => (
+          <tr key={r.id}>
+            <td>{fmtDateTime(r.reading_at)}</td>
+            <td>{fmtKwh(r.kwh_reading, 1)} kWh</td>
+            <td>{r.delta !== null ? `+${fmtKwh(r.delta, 1)} kWh` : "—"}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 export default function DashboardPage() {
   const [period, setPeriod] = useState<Period | null>(null);
   const [readings, setReadings] = useState<Reading[]>([]);
@@ -60,6 +94,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [evolutionView, setEvolutionView] = useState<"chart" | "table">("chart");
 
   const load = useCallback(async () => {
     try {
@@ -157,26 +192,43 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {s.hasReadings && s.lastReadingAt && s.forecastFinalKwh != null && (
+      {s.hasReadings && (
         <div className="card">
-          <p className="card-label" style={{ marginBottom: 8 }}>
-            Evolução
-          </p>
-          <EvolutionChart
-            startDate={period.start_date}
-            endDate={period.end_date}
-            currentAt={s.lastReadingAt}
-            accumulatedKwh={s.accumulatedKwh}
-            forecastFinalKwh={s.forecastFinalKwh}
-          />
-          <div style={{ display: "flex", gap: 16, marginTop: 8, fontSize: 12, color: "var(--color-text-muted)" }}>
-            <span>
-              <span style={{ color: "#2563EB" }}>●</span> Consumo real
-            </span>
-            <span>
-              <span style={{ color: "#FACC15" }}>●</span> Previsão
-            </span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <p className="card-label" style={{ margin: 0 }}>
+              Evolução
+            </p>
+            <div className="platform-tabs" style={{ margin: 0, width: "auto" }}>
+              <button
+                type="button"
+                className={`platform-tab${evolutionView === "chart" ? " active" : ""}`}
+                style={{ padding: "6px 12px", fontSize: 12 }}
+                onClick={() => setEvolutionView("chart")}
+              >
+                Gráfico
+              </button>
+              <button
+                type="button"
+                className={`platform-tab${evolutionView === "table" ? " active" : ""}`}
+                style={{ padding: "6px 12px", fontSize: 12 }}
+                onClick={() => setEvolutionView("table")}
+              >
+                Tabela
+              </button>
+            </div>
           </div>
+
+          {evolutionView === "chart" ? (
+            <EvolutionChart
+              startDate={period.start_date}
+              endDate={period.end_date}
+              initialKwh={period.initial_kwh}
+              readings={readings}
+              forecastFinalKwh={s.forecastFinalKwh}
+            />
+          ) : (
+            <ReadingsTable readings={readings} />
+          )}
         </div>
       )}
 
