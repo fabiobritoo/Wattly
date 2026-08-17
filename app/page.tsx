@@ -32,11 +32,18 @@ type Summary = {
   worstDay: { date: string; consumption: number } | null;
   alertLevel: "none" | "warning" | "danger";
   alertMessage: string | null;
+  currentCostReais: number | null;
+  forecastCostReais: number | null;
 };
 
 function fmtKwh(v: number | null | undefined, decimals = 1) {
   if (v === null || v === undefined || Number.isNaN(v)) return "—";
   return v.toLocaleString("pt-BR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+function fmtBRL(v: number | null | undefined) {
+  if (v === null || v === undefined || Number.isNaN(v)) return "—";
+  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 function fmtDate(iso: string) {
@@ -198,6 +205,11 @@ export default function DashboardPage() {
           {fmtKwh(s.accumulatedKwh)}
           <span className="meter-unit">kWh</span>
         </p>
+        {s.currentCostReais != null && (
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--color-secondary)", margin: "2px 0 0" }}>
+            ≈ {fmtBRL(s.currentCostReais)}
+          </p>
+        )}
         {s.todayVariationKwh !== null && (
           <span className="variation-up">↑ {fmtKwh(s.todayVariationKwh)} kWh desde a última leitura</span>
         )}
@@ -261,6 +273,11 @@ export default function DashboardPage() {
             {fmtKwh(s.forecastFinalKwh)}
             <span className="meter-unit">kWh</span>
           </p>
+          {s.forecastCostReais != null && (
+            <p style={{ fontSize: 14, fontWeight: 600, color: "var(--color-secondary)", margin: "2px 0 0" }}>
+              ≈ {fmtBRL(s.forecastCostReais)}
+            </p>
+          )}
           <div className="grid-2" style={{ marginTop: 10 }}>
             <div className="stat-block">
               <span className="stat-block-label">Média diária</span>

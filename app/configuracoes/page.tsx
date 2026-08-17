@@ -4,12 +4,24 @@ import { useCallback, useEffect, useState } from "react";
 import InstallGuide, { useIsInstalled } from "@/components/InstallGuide";
 import { APP_VERSION } from "@/lib/version";
 
+type TariffFlag = "verde" | "amarela" | "vermelha_1" | "vermelha_2";
+
 type Period = {
   id: number;
   start_date: string;
   end_date: string;
   initial_kwh: number;
   goal_kwh: number | null;
+  tariff_rate: number | null;
+  tariff_flag: TariffFlag | null;
+  flag_surcharge_rate: number | null;
+};
+
+const FLAG_LABELS: Record<TariffFlag, string> = {
+  verde: "Verde (sem custo extra)",
+  amarela: "Amarela",
+  vermelha_1: "Vermelha — patamar 1",
+  vermelha_2: "Vermelha — patamar 2",
 };
 
 export default function ConfiguracoesPage() {
@@ -32,12 +44,18 @@ export default function ConfiguracoesPage() {
   const [endDate, setEndDate] = useState("");
   const [initialKwh, setInitialKwh] = useState("");
   const [goalKwh, setGoalKwh] = useState("");
+  const [tariffRate, setTariffRate] = useState("");
+  const [tariffFlag, setTariffFlag] = useState<TariffFlag>("verde");
+  const [flagSurcharge, setFlagSurcharge] = useState("");
 
   function fillFormFrom(p: Period) {
     setStartDate(p.start_date);
     setEndDate(p.end_date);
     setInitialKwh(String(p.initial_kwh));
     setGoalKwh(p.goal_kwh != null ? String(p.goal_kwh) : "");
+    setTariffRate(p.tariff_rate != null ? String(p.tariff_rate) : "");
+    setTariffFlag(p.tariff_flag ?? "verde");
+    setFlagSurcharge(p.flag_surcharge_rate != null ? String(p.flag_surcharge_rate) : "");
   }
 
   function dayAfter(dateStr: string) {
@@ -73,12 +91,19 @@ export default function ConfiguracoesPage() {
     setError(null);
     if (period) {
       setStartDate(dayAfter(period.end_date));
+      // Tariff rate tends to stay similar across periods, so carry it over
+      // as a starting point — but not the flag/surcharge, since the
+      // "bandeira tarifária" changes monthly and shouldn't be assumed.
+      setTariffRate(period.tariff_rate != null ? String(period.tariff_rate) : "");
     } else {
       setStartDate("");
+      setTariffRate("");
     }
     setEndDate("");
     setInitialKwh("");
     setGoalKwh("");
+    setTariffFlag("verde");
+    setFlagSurcharge("");
   }
 
   function cancelNewPeriod() {
@@ -102,6 +127,9 @@ export default function ConfiguracoesPage() {
           end_date: endDate,
           initial_kwh: Number(initialKwh),
           goal_kwh: goalKwh ? Number(goalKwh) : null,
+          tariff_rate: tariffRate ? Number(tariffRate) : null,
+          tariff_flag: tariffFlag,
+          flag_surcharge_rate: flagSurcharge ? Number(flagSurcharge) : null,
         }),
       });
       const data = await res.json();
@@ -226,6 +254,53 @@ export default function ConfiguracoesPage() {
               onChange={(e) => setGoalKwh(e.target.value)}
             />
           </div>
+
+          <div className="field">
+            <label htmlFor="tariff">Tarifa de energia (R$/kWh) — opcional</label>
+            <input
+              id="tariff"
+              type="number"
+              inputMode="decimal"
+              step="0.0001"
+              placeholder="Ex: 0.85 — veja no seu último boleto"
+              value={tariffRate}
+              onChange={(e) => setTariffRate(e.target.value)}
+            />
+          </div>
+
+          {tariffRate && (
+            <>
+              <div className="field">
+                <label htmlFor="flag">Bandeira tarifária</label>
+                <select
+                  id="flag"
+                  value={tariffFlag}
+                  onChange={(e) => setTariffFlag(e.target.value as TariffFlag)}
+                >
+                  {(Object.keys(FLAG_LABELS) as TariffFlag[]).map((flag) => (
+                    <option key={flag} value={flag}>
+                      {FLAG_LABELS[flag]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {tariffFlag !== "verde" && (
+                <div className="field">
+                  <label htmlFor="flag-surcharge">Valor adicional da bandeira (R$ a cada 100 kWh)</label>
+                  <input
+                    id="flag-surcharge"
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    placeholder="Confira no site da sua distribuidora ou no boleto"
+                    value={flagSurcharge}
+                    onChange={(e) => setFlagSurcharge(e.target.value)}
+                  />
+                </div>
+              )}
+            </>
+          )}
 
           {error && <p className="error-text">{error}</p>}
           {saved && (

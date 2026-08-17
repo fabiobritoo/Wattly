@@ -249,7 +249,8 @@ button {
 }
 
 .field input,
-.field textarea {
+.field textarea,
+.field select {
   font-family: var(--font-sans);
   font-size: 16px;
   padding: 12px 14px;
@@ -260,7 +261,8 @@ button {
 }
 
 .field input:focus,
-.field textarea:focus {
+.field textarea:focus,
+.field select:focus {
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
 }

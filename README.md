@@ -37,3 +37,17 @@ cada mudança relevante antes de dar push.
 - **Melhor/pior dia e média semanal**: no Início, card "Ritmo de consumo"
   com o dia de menor e maior consumo do período atual e a média semanal
   estimada (média diária × 7).
+
+## V3
+
+- **Tarifa e bandeira tarifária**: em Ajustes, informe a tarifa (R$/kWh) do
+  seu período e, opcionalmente, a bandeira tarifária vigente com o valor
+  adicional (R$ a cada 100 kWh). Ambas ficam salvas por período, já que
+  tarifa e bandeira mudam ao longo do tempo — um período arquivado mantém
+  o valor que estava em vigor quando foi registrado.
+- **Estimativa de conta**: com a tarifa configurada, o Início mostra o
+  valor estimado do consumo atual e da previsão de fechamento em R$. O
+  Histórico também mostra o valor estimado de cada período para comparação.
+- Esse valor é só uma estimativa do custo de energia (tarifa × consumo +
+  adicional de bandeira). Contas reais também incluem impostos, taxas de
+  distribuição e outros itens que o app não tem como saber.

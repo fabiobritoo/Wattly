@@ -54,6 +54,13 @@ export async function migrate() {
   `;
   await sql`ALTER TABLE periods ADD COLUMN IF NOT EXISTS goal_kwh NUMERIC`;
   await sql`ALTER TABLE periods ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now()`;
+  // V3 — financial tracking: tariff rate (R$/kWh) and, optionally, the
+  // Brazilian "bandeira tarifária" surcharge (R$ per 100 kWh). Both are
+  // per-period, since rates and flags change over time and a historical
+  // period should keep whatever was actually in effect back then.
+  await sql`ALTER TABLE periods ADD COLUMN IF NOT EXISTS tariff_rate NUMERIC`;
+  await sql`ALTER TABLE periods ADD COLUMN IF NOT EXISTS tariff_flag TEXT`;
+  await sql`ALTER TABLE periods ADD COLUMN IF NOT EXISTS flag_surcharge_rate NUMERIC`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS readings (

@@ -1,9 +1,14 @@
+export type TariffFlag = "verde" | "amarela" | "vermelha_1" | "vermelha_2";
+
 export type Period = {
   id: number;
   start_date: string; // ISO date (yyyy-mm-dd)
   end_date: string;
   initial_kwh: number;
   goal_kwh: number | null;
+  tariff_rate: number | null; // R$ per kWh
+  tariff_flag: TariffFlag | null;
+  flag_surcharge_rate: number | null; // R$ per 100 kWh, only applies when tariff_flag !== "verde"
 };
 
 export type Reading = {
@@ -33,6 +38,8 @@ export type Summary = {
   worstDay: DayConsumption | null; // highest-consumption day
   alertLevel: "none" | "warning" | "danger";
   alertMessage: string | null;
+  currentCostReais: number | null; // estimated bill for consumption so far
+  forecastCostReais: number | null; // estimated bill at forecasted period end
 };
 
 function daysBetween(a: Date, b: Date): number {
@@ -58,6 +65,24 @@ function addDaysToDateStr(dateStr: string, n: number): string {
 
 function fmt(v: number, decimals = 1): string {
   return v.toLocaleString("pt-BR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+/**
+ * Estimated bill for a given consumption, using the period's tariff rate
+ * plus the "bandeira tarifária" surcharge when applicable. Returns null
+ * when no tariff rate has been configured for the period (financial
+ * tracking is opt-in). This is an estimate of the energy charge only — real
+ * bills also include taxes, distribution fees, and other line items this
+ * app has no way to know.
+ */
+function estimateCostReais(kwh: number, period: Period): number | null {
+  if (period.tariff_rate == null) return null;
+  const energyCost = kwh * Number(period.tariff_rate);
+  const flagCost =
+    period.tariff_flag && period.tariff_flag !== "verde" && period.flag_surcharge_rate != null
+      ? (kwh / 100) * Number(period.flag_surcharge_rate)
+      : 0;
+  return energyCost + flagCost;
 }
 
 /**
@@ -142,6 +167,8 @@ export function computeSummary(period: Period, readings: Reading[]): Summary {
       worstDay: null,
       alertLevel: "none",
       alertMessage: null,
+      currentCostReais: null,
+      forecastCostReais: null,
     };
   }
 
@@ -215,5 +242,7 @@ export function computeSummary(period: Period, readings: Reading[]): Summary {
     worstDay,
     alertLevel,
     alertMessage,
+    currentCostReais: estimateCostReais(accumulatedKwh, period),
+    forecastCostReais: forecastFinalKwh != null ? estimateCostReais(forecastFinalKwh, period) : null,
   };
 }
