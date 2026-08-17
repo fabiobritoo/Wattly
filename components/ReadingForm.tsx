@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CalendarIcon, ConsumptionIcon, NotesIcon } from "@/components/icons";
+import { broadcastDataChanged } from "@/lib/events";
 
 const NOTE_MAX_LENGTH = 120;
 
@@ -90,6 +91,7 @@ export default function ReadingForm({
         }
       }
 
+      broadcastDataChanged();
       onSaved();
       onClose();
     } catch (err) {
@@ -108,6 +110,7 @@ export default function ReadingForm({
       const res = await fetch(`/api/readings/${editingReading.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro ao excluir leitura.");
+      broadcastDataChanged();
       onSaved();
       onClose();
     } catch (err) {

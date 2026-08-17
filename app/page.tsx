@@ -5,7 +5,9 @@ import Link from "next/link";
 import EvolutionChart from "@/components/EvolutionChart";
 import ReadingForm from "@/components/ReadingForm";
 import RhythmGauge from "@/components/RhythmGauge";
+import AllReadingsModal from "@/components/AllReadingsModal";
 import { AlertIcon, ConsumptionIcon, ForecastIcon } from "@/components/icons";
+import { DATA_CHANGED_EVENT } from "@/lib/events";
 
 type Period = {
   id: number;
@@ -67,7 +69,15 @@ const statusLabels: Record<Summary["status"], { label: string; className: string
   acima_da_meta: { label: "Acima da meta", className: "status-alert" },
 };
 
-function ReadingsTable({ readings, onEdit }: { readings: Reading[]; onEdit: (r: Reading) => void }) {
+function ReadingsTable({
+  readings,
+  onEdit,
+  onShowAll,
+}: {
+  readings: Reading[];
+  onEdit: (r: Reading) => void;
+  onShowAll: () => void;
+}) {
   const sorted = [...readings].sort((a, b) => (a.reading_at < b.reading_at ? -1 : 1));
   const enriched = sorted.map((r, i) => ({
     ...r,
@@ -101,6 +111,28 @@ function ReadingsTable({ readings, onEdit }: { readings: Reading[]; onEdit: (r: 
       </table>
       <p style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 8 }}>
         Toque em uma leitura para editar ou excluir.
+        {readings.length > 5 && (
+          <>
+            {" · "}
+            <button
+              type="button"
+              onClick={onShowAll}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                margin: 0,
+                font: "inherit",
+                fontSize: 11,
+                color: "var(--color-text-muted)",
+                textDecoration: "underline",
+                cursor: "pointer",
+              }}
+            >
+              ver leituras mais antigas
+            </button>
+          </>
+        )}
       </p>
     </>
   );
@@ -115,6 +147,7 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingReading, setEditingReading] = useState<Reading | null>(null);
+  const [showAllReadings, setShowAllReadings] = useState(false);
   const [evolutionView, setEvolutionView] = useState<"chart" | "table">("chart");
 
   const load = useCallback(async () => {
@@ -136,6 +169,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     load();
+  }, [load]);
+
+  useEffect(() => {
+    window.addEventListener(DATA_CHANGED_EVENT, load);
+    return () => window.removeEventListener(DATA_CHANGED_EVENT, load);
   }, [load]);
 
   if (loading) {
@@ -277,7 +315,7 @@ export default function DashboardPage() {
               goalKwh={period.goal_kwh}
             />
           ) : (
-            <ReadingsTable readings={readings} onEdit={setEditingReading} />
+            <ReadingsTable readings={readings} onEdit={setEditingReading} onShowAll={() => setShowAllReadings(true)} />
           )}
         </div>
       )}
@@ -421,6 +459,14 @@ export default function DashboardPage() {
           editingReading={editingReading}
           onClose={() => setEditingReading(null)}
           onSaved={load}
+        />
+      )}
+
+      {showAllReadings && (
+        <AllReadingsModal
+          readings={readings}
+          onEdit={setEditingReading}
+          onClose={() => setShowAllReadings(false)}
         />
       )}
     </>

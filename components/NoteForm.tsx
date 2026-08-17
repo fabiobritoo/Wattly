@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CalendarIcon, NotesIcon } from "@/components/icons";
+import { broadcastDataChanged } from "@/lib/events";
 
 const NOTE_MAX_LENGTH = 120;
 
@@ -57,6 +58,7 @@ export default function NoteForm({
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Erro ao salvar anotação.");
       }
+      broadcastDataChanged();
       onSaved();
       onClose();
     } catch (err) {
@@ -75,6 +77,7 @@ export default function NoteForm({
       const res = await fetch(`/api/notes/${editingNote.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro ao excluir anotação.");
+      broadcastDataChanged();
       onSaved();
       onClose();
     } catch (err) {

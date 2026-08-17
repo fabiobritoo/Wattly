@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { HistoryIcon } from "@/components/icons";
+import { DATA_CHANGED_EVENT } from "@/lib/events";
 
 type DayConsumption = { date: string; consumption: number };
 
@@ -159,6 +160,11 @@ export default function HistoricoPage() {
 
   useEffect(() => {
     load();
+  }, [load]);
+
+  useEffect(() => {
+    window.addEventListener(DATA_CHANGED_EVENT, load);
+    return () => window.removeEventListener(DATA_CHANGED_EVENT, load);
   }, [load]);
 
   const current = periods.find((p) => p.isCurrent) ?? null;

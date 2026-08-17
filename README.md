@@ -138,3 +138,17 @@ e novos componentes de UI).
   valor-base oficial da ANEEL. A correção é aplicada automaticamente pela
   migração a quem já tinha esse valor salvo (sem afetar quem já tinha
   personalizado o campo para outro valor).
+
+### v4.2 — botão flutuante de registro + acesso a leituras antigas
+
+- **Botão "+" flutuante**: novo botão verde elevado no centro do menu
+  inferior, disponível em qualquer tela do app — toca e já abre o
+  formulário de registrar leitura, sem precisar voltar pro Início. Se
+  ainda não houver período configurado, leva direto pra Ajustes.
+- Um pequeno "event bus" (`lib/events.ts`) mantém as telas sincronizadas:
+  qualquer leitura ou anotação salva por qualquer formulário do app avisa
+  as páginas já abertas pra atualizarem os dados sozinhas.
+- **Ver leituras mais antigas**: no card de Evolução, aba "Tabela", agora
+  tem um linkzinho discreto "ver leituras mais antigas" que abre a lista
+  completa de leituras do período (não só as últimas 5), com o mesmo
+  toque-para-editar de sempre.

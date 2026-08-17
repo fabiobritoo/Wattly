@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { NotesIcon } from "@/components/icons";
 import NoteForm from "@/components/NoteForm";
+import { DATA_CHANGED_EVENT } from "@/lib/events";
 
 type Note = { id: number; date: string; text: string };
 type Period = { id: number; start_date: string; end_date: string };
@@ -52,6 +53,11 @@ export default function AnotacoesPage() {
 
   useEffect(() => {
     load();
+  }, [load]);
+
+  useEffect(() => {
+    window.addEventListener(DATA_CHANGED_EVENT, load);
+    return () => window.removeEventListener(DATA_CHANGED_EVENT, load);
   }, [load]);
 
   if (loading) {
