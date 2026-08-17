@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import EvolutionChart from "@/components/EvolutionChart";
 import ReadingForm from "@/components/ReadingForm";
+import RhythmGauge from "@/components/RhythmGauge";
+import { AlertIcon, ConsumptionIcon, ForecastIcon } from "@/components/icons";
 
 type Period = {
   id: number;
@@ -183,7 +185,10 @@ export default function DashboardPage() {
             boxShadow: "none",
           }}
         >
-          <span className="status-dot" style={{ marginTop: 5, flexShrink: 0 }} />
+          <AlertIcon
+            size={20}
+            style={{ flexShrink: 0, marginTop: 1, color: s.alertLevel === "danger" ? "var(--color-alert)" : "#92660A" }}
+          />
           <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600 }}>{s.alertMessage}</p>
         </div>
       )}
@@ -198,7 +203,8 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        <p className="card-label" style={{ marginTop: 10 }}>
+        <p className="card-label" style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
+          <ConsumptionIcon size={14} />
           Consumo atual
         </p>
         <p className="meter-value">
@@ -262,6 +268,7 @@ export default function DashboardPage() {
               initialKwh={period.initial_kwh}
               readings={readings}
               forecastFinalKwh={s.forecastFinalKwh}
+              goalKwh={period.goal_kwh}
             />
           ) : (
             <ReadingsTable readings={readings} />
@@ -269,9 +276,22 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {s.hasReadings && s.worstDay && (
+        <div className="card" style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+          <span style={{ fontSize: 18, lineHeight: 1 }}>💡</span>
+          <p style={{ margin: 0, fontSize: 13.5 }}>
+            <strong>Insight do período:</strong> seu maior consumo aconteceu em {fmtDate(s.worstDay.date)}, com{" "}
+            {fmtKwh(s.worstDay.consumption)} kWh.
+          </p>
+        </div>
+      )}
+
       {s.hasReadings && (
         <div className="card">
-          <p className="card-label">Previsão</p>
+          <p className="card-label" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <ForecastIcon size={14} />
+            Previsão
+          </p>
           <p className="meter-value">
             {fmtKwh(s.forecastFinalKwh)}
             <span className="meter-unit">kWh</span>
@@ -296,9 +316,24 @@ export default function DashboardPage() {
           </div>
 
           {period.goal_kwh != null && (
-            <p style={{ fontSize: 13, color: "var(--color-text-muted)", marginTop: 10 }}>
-              Meta do período: {fmtKwh(period.goal_kwh)} kWh
-            </p>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, background: "var(--color-bg)", borderRadius: "var(--radius-md)", padding: "10px 14px" }}>
+              <span style={{ fontSize: 13, color: "var(--color-text-muted)" }}>
+                Meta: {fmtKwh(period.goal_kwh)} kWh
+              </span>
+              {s.forecastFinalKwh != null && (
+                <span
+                  style={{
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    color: s.forecastFinalKwh > period.goal_kwh ? "var(--color-alert)" : "var(--color-primary-dark)",
+                  }}
+                >
+                  {s.forecastFinalKwh > period.goal_kwh ? "+" : ""}
+                  {fmtKwh(s.forecastFinalKwh - period.goal_kwh)} kWh{" "}
+                  {s.forecastFinalKwh > period.goal_kwh ? "acima da meta" : "abaixo da meta"}
+                </span>
+              )}
+            </div>
           )}
 
           <span className={`status-pill ${statusInfo.className}`} style={{ marginTop: 12 }}>
@@ -308,12 +343,16 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {s.hasReadings && (s.bestDay || s.worstDay || s.weeklyAverageKwh != null) && (
+      {s.hasReadings && s.dailyAverageKwh != null && (
         <div className="card">
-          <p className="card-label">Ritmo de consumo</p>
+          <p className="card-label" style={{ marginBottom: 4 }}>Ritmo de consumo</p>
+          <RhythmGauge
+            dailyAverageKwh={s.dailyAverageKwh}
+            expectedDailyKwh={period.goal_kwh != null ? period.goal_kwh / s.totalDays : null}
+          />
 
           {s.weeklyAverageKwh != null && (
-            <div style={{ marginTop: 10 }}>
+            <div style={{ marginTop: 14, textAlign: "center" }}>
               <span className="stat-block-label">Média semanal</span>
               <p className="meter-value-md" style={{ marginTop: 2 }}>
                 {fmtKwh(s.weeklyAverageKwh)} <span style={{ fontSize: 13, fontWeight: 500, color: "var(--color-text-muted)" }}>kWh/semana</span>
@@ -361,7 +400,12 @@ export default function DashboardPage() {
       </button>
 
       {showForm && (
-        <ReadingForm periodId={period.id} onClose={() => setShowForm(false)} onSaved={load} />
+        <ReadingForm
+          periodId={period.id}
+          lastKwh={s.hasReadings ? period.initial_kwh + s.accumulatedKwh : null}
+          onClose={() => setShowForm(false)}
+          onSaved={load}
+        />
       )}
     </>
   );

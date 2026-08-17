@@ -37,6 +37,7 @@ export type Summary = {
   goalExceededNow: boolean; // actual accumulated consumption already above the goal
   bestDay: DayConsumption | null; // lowest-consumption day
   worstDay: DayConsumption | null; // highest-consumption day
+  dailyBreakdown: DayConsumption[]; // one entry per calendar day, for daily/weekly/monthly logs
   alertLevel: "none" | "warning" | "danger";
   alertMessage: string | null;
   currentCostReais: number | null; // estimated energy cost for consumption so far (no fixed fees yet)
@@ -172,6 +173,7 @@ export function computeSummary(period: Period, readings: Reading[]): Summary {
       goalExceededNow: false,
       bestDay: null,
       worstDay: null,
+      dailyBreakdown: [],
       alertLevel: "none",
       alertMessage: null,
       currentCostReais: null,
@@ -247,6 +249,7 @@ export function computeSummary(period: Period, readings: Reading[]): Summary {
     goalExceededNow,
     bestDay,
     worstDay,
+    dailyBreakdown,
     alertLevel,
     alertMessage,
     currentCostReais: estimateCostReais(accumulatedKwh, period, false),

@@ -80,3 +80,34 @@ cada mudança relevante antes de dar push.
   pro período atual, com opção de substituir as leituras já existentes.
   Parser tolera variações de cabeçalho e ignora colunas de consumo/delta
   (o app recalcula isso sozinho a partir da leitura bruta do medidor).
+
+## V4 — repaginada visual
+
+Aplicado o kit de marca e os mockups fornecidos (paleta, tipografia, ícones
+e novos componentes de UI).
+
+- **Paleta**: verde `#16C76A`, verde escuro `#15803D`, azul `#2563EB`,
+  amarelo `#F5B91E`, vermelho `#EF4444`, texto `#10233F`, texto secundário
+  `#64748B` — alinhada com o kit de ícones fornecido.
+- **Tipografia**: Poppins (títulos e números grandes) + Inter (corpo),
+  self-hosted via `@fontsource` — sem chamadas externas ao Google Fonts em
+  tempo de execução, então o PWA instalado continua funcionando 100% offline.
+- **Ícone do app**: nova marca (raio + linha de evolução + ponto de
+  destaque), aplicada em todos os tamanhos (192/512/maskable/apple-touch/favicon).
+- **Ícones internos**: 15 ícones de traço do kit fornecido, convertidos em
+  componentes React (`components/icons.tsx`), usados na navegação e nos
+  cabeçalhos das telas.
+- **Medidor de ritmo** (`components/RhythmGauge.tsx`): gauge semicircular
+  com agulha e zonas verde/amarela/vermelha comparando o consumo diário
+  médio com o ritmo necessário pra bater a meta.
+- **Gráfico de evolução**: zona segura sombreada até a meta, linha
+  tracejada da meta, balão de previsão colorido conforme está acima ou
+  abaixo da meta, e legenda.
+- **Insight automático**: card com o dia de maior consumo do período,
+  gerado a partir dos dados que já existiam (melhor/pior dia).
+- **Registrar leitura**: ícones nos campos, cálculo do consumo desde a
+  última leitura em tempo real (antes só aparecia depois de salvar),
+  contador de caracteres na observação, rodapé de confiança.
+- **Histórico reestruturado**: agora tem duas seções — um log de consumo
+  com abas Dia/Semana/Mês (novo) do período atual, e a comparação entre
+  períodos (que já existia na V2) logo abaixo.

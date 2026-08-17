@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { NotesIcon } from "@/components/icons";
 
 type Note = { id: number; date: string; text: string };
 type Period = { id: number; start_date: string; end_date: string };
@@ -93,7 +94,10 @@ export default function AnotacoesPage() {
 
   return (
     <>
-      <h1 className="section-title">Anotações</h1>
+      <h1 className="section-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <NotesIcon size={20} />
+        Anotações
+      </h1>
       <p style={{ fontSize: 13, color: "var(--color-text-muted)", marginTop: 0 }}>
         Uma linha do tempo de eventos que podem explicar picos ou quedas no consumo.
       </p>

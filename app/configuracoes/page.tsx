@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import InstallGuide, { useIsInstalled } from "@/components/InstallGuide";
 import ReadingsImport from "@/components/ReadingsImport";
+import { SettingsIcon } from "@/components/icons";
 import { APP_VERSION } from "@/lib/version";
 
 type TariffFlag = "verde" | "amarela" | "vermelha_1" | "vermelha_2";
@@ -246,7 +247,10 @@ export default function ConfiguracoesPage() {
 
   return (
     <>
-      <h1 className="section-title">Ajustes</h1>
+      <h1 className="section-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <SettingsIcon size={20} />
+        Ajustes
+      </h1>
 
       <div className="card">
         <p className="card-label" style={{ marginBottom: 12 }}>
@@ -432,7 +436,7 @@ export default function ConfiguracoesPage() {
         </p>
         <p style={{ fontSize: 13, color: "var(--color-text-muted)", marginBottom: 12 }}>
           Versão instalada neste dispositivo:{" "}
-          <span style={{ fontFamily: "var(--font-meter)", color: "var(--color-text)" }}>
+          <span style={{ fontFamily: "var(--font-display)", color: "var(--color-text)" }}>
             v{APP_VERSION}
           </span>
         </p>
