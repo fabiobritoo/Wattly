@@ -9,7 +9,7 @@ export type Period = {
 export type Reading = {
   id: number;
   period_id: number;
-  date: string;
+  reading_at: string; // ISO datetime (UTC)
   kwh_reading: number;
 };
 
@@ -24,7 +24,7 @@ export type Summary = {
   forecastFinalKwh: number | null;
   forecastRemainingKwh: number | null;
   status: "sem_dados" | "dentro_do_esperado" | "acima_da_media" | "acima_da_meta";
-  lastReadingDate: string | null;
+  lastReadingAt: string | null;
 };
 
 function daysBetween(a: Date, b: Date): number {
@@ -37,9 +37,16 @@ function toDate(iso: string): Date {
   return new Date(iso + "T00:00:00Z");
 }
 
+/** Extracts the UTC calendar date (yyyy-mm-dd) from an ISO datetime. */
+function dateOnly(isoDateTime: string): string {
+  return isoDateTime.slice(0, 10);
+}
+
 /**
- * Computes the dashboard numbers from a period + its ordered readings
- * (ascending by date). Mirrors the formulas in the product spec:
+ * Computes the dashboard numbers from a period + its readings (any order).
+ * Several readings per day are allowed — only the latest one (by
+ * timestamp) counts for "current" numbers; day counts use its calendar date.
+ * Mirrors the formulas in the product spec:
  * - Accumulated = latest reading - initial reading of the period.
  * - Daily average = accumulated / days elapsed since start.
  * - Forecast remaining = daily average * days remaining until end_date.
@@ -53,7 +60,7 @@ export function computeSummary(period: Period, readings: Reading[]): Summary {
   // 31-day period — not a raw date subtraction, which would be off by one.
   const totalDays = Math.max(daysBetween(start, end) + 1, 1);
 
-  const sorted = [...readings].sort((a, b) => (a.date < b.date ? -1 : 1));
+  const sorted = [...readings].sort((a, b) => (a.reading_at < b.reading_at ? -1 : 1));
 
   if (sorted.length === 0) {
     return {
@@ -67,12 +74,12 @@ export function computeSummary(period: Period, readings: Reading[]): Summary {
       forecastFinalKwh: null,
       forecastRemainingKwh: null,
       status: "sem_dados",
-      lastReadingDate: null,
+      lastReadingAt: null,
     };
   }
 
   const latest = sorted[sorted.length - 1];
-  const latestDate = toDate(latest.date);
+  const latestDate = toDate(dateOnly(latest.reading_at));
   const accumulatedKwh = Number(latest.kwh_reading) - Number(period.initial_kwh);
 
   const previous = sorted.length >= 2 ? sorted[sorted.length - 2] : null;
@@ -96,7 +103,7 @@ export function computeSummary(period: Period, readings: Reading[]): Summary {
       status = "dentro_do_esperado";
     }
   } else if (todayVariationKwh != null && dailyAverageKwh > 0) {
-    // Without a goal, flag if today's pace is notably above the running average.
+    // Without a goal, flag if the last reading's pace is notably above the running average.
     status = todayVariationKwh > dailyAverageKwh * 1.2 ? "acima_da_media" : "dentro_do_esperado";
   }
 
@@ -111,6 +118,6 @@ export function computeSummary(period: Period, readings: Reading[]): Summary {
     forecastFinalKwh,
     forecastRemainingKwh,
     status,
-    lastReadingDate: latest.date,
+    lastReadingAt: latest.reading_at,
   };
 }

@@ -59,12 +59,25 @@ export async function migrate() {
     CREATE TABLE IF NOT EXISTS readings (
       id SERIAL PRIMARY KEY,
       period_id INTEGER NOT NULL REFERENCES periods(id) ON DELETE CASCADE,
-      date DATE NOT NULL,
+      date DATE,
       kwh_reading NUMERIC NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       UNIQUE (period_id, date)
     )
   `;
+  // reading_at replaces the old one-reading-per-day "date" column, so the
+  // user can log several readings in the same day (e.g. morning/night).
+  // Backfill from the old column for anyone who already had data, then drop
+  // the day-level uniqueness constraint that no longer applies.
+  await sql`ALTER TABLE readings ADD COLUMN IF NOT EXISTS reading_at TIMESTAMPTZ`;
+  await sql`
+    UPDATE readings
+    SET reading_at = (date::timestamp AT TIME ZONE 'UTC')
+    WHERE reading_at IS NULL AND date IS NOT NULL
+  `;
+  await sql`UPDATE readings SET reading_at = created_at WHERE reading_at IS NULL`;
+  await sql`ALTER TABLE readings DROP CONSTRAINT IF EXISTS readings_period_id_date_key`;
+  await sql`ALTER TABLE readings ALTER COLUMN date DROP NOT NULL`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS notes (

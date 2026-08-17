@@ -24,10 +24,10 @@ export async function GET() {
     }
 
     const readings = await sql`
-      SELECT id, period_id, date::text AS date, kwh_reading
+      SELECT id, period_id, to_char(reading_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS reading_at, kwh_reading
       FROM readings
       WHERE period_id = ${period.id}
-      ORDER BY date ASC
+      ORDER BY reading_at ASC
     `;
 
     const notes = await sql`
@@ -49,7 +49,7 @@ export async function GET() {
       readings.map((r: any) => ({
         id: r.id,
         period_id: r.period_id,
-        date: r.date,
+        reading_at: r.reading_at,
         kwh_reading: Number(r.kwh_reading),
       }))
     );

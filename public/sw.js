@@ -2,7 +2,7 @@
 // - Never caches /api/ (data must always be fresh).
 // - For everything else, tries the network first so a new deploy is picked
 //   up immediately; falls back to cache only when fully offline.
-const CACHE_NAME = "wattly-shell-v1";
+const CACHE_NAME = "wattly-shell-v2";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();

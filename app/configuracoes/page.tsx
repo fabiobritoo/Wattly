@@ -21,6 +21,12 @@ export default function ConfiguracoesPage() {
   const [showInstall, setShowInstall] = useState(false);
   const installed = useIsInstalled();
 
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<
+    { kind: "idle" } | { kind: "current" } | { kind: "outdated"; serverVersion: string } | { kind: "error"; message: string }
+  >({ kind: "idle" });
+  const [forcingUpdate, setForcingUpdate] = useState(false);
+
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [initialKwh, setInitialKwh] = useState("");
@@ -76,6 +82,46 @@ export default function ConfiguracoesPage() {
       setError(err instanceof Error ? err.message : "Erro desconhecido.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleCheckForUpdate() {
+    setCheckingUpdate(true);
+    setUpdateStatus({ kind: "idle" });
+    try {
+      const res = await fetch("/api/version", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erro ao verificar versão.");
+      if (data.version === APP_VERSION) {
+        setUpdateStatus({ kind: "current" });
+      } else {
+        setUpdateStatus({ kind: "outdated", serverVersion: data.version });
+      }
+    } catch (err) {
+      setUpdateStatus({
+        kind: "error",
+        message: err instanceof Error ? err.message : "Erro desconhecido.",
+      });
+    } finally {
+      setCheckingUpdate(false);
+    }
+  }
+
+  async function handleForceUpdate() {
+    setForcingUpdate(true);
+    try {
+      if ("serviceWorker" in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((r) => r.unregister()));
+      }
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((key) => caches.delete(key)));
+      }
+    } finally {
+      // Reload regardless of whether SW/cache cleanup succeeded, so the
+      // user always ends up on whatever the server has right now.
+      window.location.reload();
     }
   }
 
@@ -170,12 +216,47 @@ export default function ConfiguracoesPage() {
       )}
 
       <div className="card">
+        <p className="card-label" style={{ marginBottom: 8 }}>
+          Atualizações
+        </p>
+        <p style={{ fontSize: 13, color: "var(--color-text-muted)", marginBottom: 12 }}>
+          Versão instalada neste dispositivo:{" "}
+          <span style={{ fontFamily: "var(--font-meter)", color: "var(--color-text)" }}>
+            v{APP_VERSION}
+          </span>
+        </p>
+
+        {updateStatus.kind === "current" && (
+          <p style={{ fontSize: 13, color: "var(--color-primary-dark)", marginBottom: 12 }}>
+            Você já está na versão mais recente.
+          </p>
+        )}
+        {updateStatus.kind === "outdated" && (
+          <p style={{ fontSize: 13, color: "var(--color-alert)", marginBottom: 12 }}>
+            Nova versão disponível no servidor: v{updateStatus.serverVersion}. Toque em "Forçar
+            atualização" para carregar a versão mais recente.
+          </p>
+        )}
+        {updateStatus.kind === "error" && (
+          <p className="error-text" style={{ marginBottom: 12 }}>
+            {updateStatus.message}
+          </p>
+        )}
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <button className="btn btn-secondary" onClick={handleCheckForUpdate} disabled={checkingUpdate}>
+            {checkingUpdate ? "Verificando..." : "Verificar atualização"}
+          </button>
+          <button className="btn btn-primary" onClick={handleForceUpdate} disabled={forcingUpdate}>
+            {forcingUpdate ? "Atualizando..." : "Forçar atualização"}
+          </button>
+        </div>
+      </div>
+
+      <div className="card">
         <p className="card-label">Sobre</p>
         <p style={{ fontSize: 13, color: "var(--color-text-muted)", marginTop: 6 }}>
           Wattly — Entenda seu consumo.
-        </p>
-        <p style={{ fontSize: 12, color: "var(--color-text-muted)", fontFamily: "var(--font-meter)" }}>
-          Versão {APP_VERSION}
         </p>
       </div>
 

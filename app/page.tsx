@@ -12,7 +12,7 @@ type Period = {
   initial_kwh: number;
   goal_kwh: number | null;
 };
-type Reading = { id: number; date: string; kwh_reading: number };
+type Reading = { id: number; reading_at: string; kwh_reading: number };
 type Note = { id: number; date: string; text: string };
 type Summary = {
   hasReadings: boolean;
@@ -25,7 +25,7 @@ type Summary = {
   forecastFinalKwh: number | null;
   forecastRemainingKwh: number | null;
   status: "sem_dados" | "dentro_do_esperado" | "acima_da_media" | "acima_da_meta";
-  lastReadingDate: string | null;
+  lastReadingAt: string | null;
 };
 
 function fmtKwh(v: number | null | undefined, decimals = 1) {
@@ -36,6 +36,13 @@ function fmtKwh(v: number | null | undefined, decimals = 1) {
 function fmtDate(iso: string) {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y.slice(2)}`;
+}
+
+function fmtDateTime(iso: string) {
+  const d = new Date(iso);
+  const datePart = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  const timePart = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  return `${datePart} às ${timePart}`;
 }
 
 const statusLabels: Record<Summary["status"], { label: string; className: string }> = {
@@ -135,7 +142,12 @@ export default function DashboardPage() {
           <span className="meter-unit">kWh</span>
         </p>
         {s.todayVariationKwh !== null && (
-          <span className="variation-up">↑ {fmtKwh(s.todayVariationKwh)} kWh hoje</span>
+          <span className="variation-up">↑ {fmtKwh(s.todayVariationKwh)} kWh desde a última leitura</span>
+        )}
+        {s.lastReadingAt && (
+          <p style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: 6 }}>
+            Última leitura: {fmtDateTime(s.lastReadingAt)}
+          </p>
         )}
 
         {!s.hasReadings && (
@@ -145,7 +157,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {s.hasReadings && (
+      {s.hasReadings && s.lastReadingAt && s.forecastFinalKwh != null && (
         <div className="card">
           <p className="card-label" style={{ marginBottom: 8 }}>
             Evolução
@@ -153,8 +165,8 @@ export default function DashboardPage() {
           <EvolutionChart
             startDate={period.start_date}
             endDate={period.end_date}
-            initialKwh={period.initial_kwh}
-            readings={readings}
+            currentAt={s.lastReadingAt}
+            accumulatedKwh={s.accumulatedKwh}
             forecastFinalKwh={s.forecastFinalKwh}
           />
           <div style={{ display: "flex", gap: 16, marginTop: 8, fontSize: 12, color: "var(--color-text-muted)" }}>
@@ -210,7 +222,7 @@ export default function DashboardPage() {
       )}
 
       <button className="btn btn-primary" onClick={() => setShowForm(true)}>
-        Registrar leitura de hoje
+        Registrar leitura
       </button>
 
       {showForm && (
