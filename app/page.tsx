@@ -67,7 +67,7 @@ const statusLabels: Record<Summary["status"], { label: string; className: string
   acima_da_meta: { label: "Acima da meta", className: "status-alert" },
 };
 
-function ReadingsTable({ readings }: { readings: Reading[] }) {
+function ReadingsTable({ readings, onEdit }: { readings: Reading[]; onEdit: (r: Reading) => void }) {
   const sorted = [...readings].sort((a, b) => (a.reading_at < b.reading_at ? -1 : 1));
   const enriched = sorted.map((r, i) => ({
     ...r,
@@ -80,24 +80,29 @@ function ReadingsTable({ readings }: { readings: Reading[] }) {
   }
 
   return (
-    <table className="readings-table">
-      <thead>
-        <tr>
-          <th>Data / hora</th>
-          <th>Leitura</th>
-          <th>Variação</th>
-        </tr>
-      </thead>
-      <tbody>
-        {lastFive.map((r) => (
-          <tr key={r.id}>
-            <td>{fmtDateTime(r.reading_at)}</td>
-            <td>{fmtKwh(r.kwh_reading, 1)} kWh</td>
-            <td>{r.delta !== null ? `+${fmtKwh(r.delta, 1)} kWh` : "—"}</td>
+    <>
+      <table className="readings-table">
+        <thead>
+          <tr>
+            <th>Data / hora</th>
+            <th>Leitura</th>
+            <th>Variação</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {lastFive.map((r) => (
+            <tr key={r.id} onClick={() => onEdit(r)} style={{ cursor: "pointer" }}>
+              <td>{fmtDateTime(r.reading_at)}</td>
+              <td>{fmtKwh(r.kwh_reading, 1)} kWh</td>
+              <td>{r.delta !== null ? `+${fmtKwh(r.delta, 1)} kWh` : "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 8 }}>
+        Toque em uma leitura para editar ou excluir.
+      </p>
+    </>
   );
 }
 
@@ -109,6 +114,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [editingReading, setEditingReading] = useState<Reading | null>(null);
   const [evolutionView, setEvolutionView] = useState<"chart" | "table">("chart");
 
   const load = useCallback(async () => {
@@ -271,7 +277,7 @@ export default function DashboardPage() {
               goalKwh={period.goal_kwh}
             />
           ) : (
-            <ReadingsTable readings={readings} />
+            <ReadingsTable readings={readings} onEdit={setEditingReading} />
           )}
         </div>
       )}
@@ -404,6 +410,16 @@ export default function DashboardPage() {
           periodId={period.id}
           lastKwh={s.hasReadings ? period.initial_kwh + s.accumulatedKwh : null}
           onClose={() => setShowForm(false)}
+          onSaved={load}
+        />
+      )}
+
+      {editingReading && (
+        <ReadingForm
+          periodId={period.id}
+          lastKwh={s.hasReadings ? period.initial_kwh + s.accumulatedKwh : null}
+          editingReading={editingReading}
+          onClose={() => setEditingReading(null)}
           onSaved={load}
         />
       )}

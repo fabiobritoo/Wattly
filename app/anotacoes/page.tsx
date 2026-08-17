@@ -2,19 +2,21 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { NotesIcon } from "@/components/icons";
+import NoteForm from "@/components/NoteForm";
 
 type Note = { id: number; date: string; text: string };
 type Period = { id: number; start_date: string; end_date: string };
 
-function todayIso() {
-  const d = new Date();
-  const tzOffsetMs = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - tzOffsetMs).toISOString().slice(0, 10);
-}
+const MONTH_ABBR = [
+  "JAN", "FEV", "MAR", "ABR", "MAI", "JUN",
+  "JUL", "AGO", "SET", "OUT", "NOV", "DEZ",
+];
 
-function fmtDate(iso: string) {
-  const [y, m, d] = iso.split("-");
-  return `${d}/${m}`;
+const BADGE_COLORS = ["var(--color-primary)", "var(--color-secondary)"];
+
+function badgeParts(iso: string) {
+  const [, m, d] = iso.split("-");
+  return { day: d, month: MONTH_ABBR[Number(m) - 1] };
 }
 
 export default function AnotacoesPage() {
@@ -22,10 +24,8 @@ export default function AnotacoesPage() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const [date, setDate] = useState(todayIso());
-  const [text, setText] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -54,28 +54,6 @@ export default function AnotacoesPage() {
     load();
   }, [load]);
 
-  async function handleAdd(e: React.FormEvent) {
-    e.preventDefault();
-    if (!period || !text.trim()) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/notes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ period_id: period.id, date, text: text.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Erro ao salvar anotação.");
-      setText("");
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro desconhecido.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
   if (loading) {
     return (
       <div className="empty-state" role="status">
@@ -98,39 +76,15 @@ export default function AnotacoesPage() {
         <NotesIcon size={20} />
         Anotações
       </h1>
-      <p style={{ fontSize: 13, color: "var(--color-text-muted)", marginTop: 0 }}>
+      <p style={{ fontSize: 13, color: "var(--color-text-muted)", marginTop: 0, marginBottom: 16 }}>
         Uma linha do tempo de eventos que podem explicar picos ou quedas no consumo.
       </p>
 
-      <div className="card">
-        <form onSubmit={handleAdd}>
-          <div className="field">
-            <label htmlFor="note-date">Data</label>
-            <input
-              id="note-date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              required
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="note-text">Anotação</label>
-            <textarea
-              id="note-text"
-              rows={2}
-              placeholder="Ex: Recebemos visitas"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              required
-            />
-          </div>
-          {error && <p className="error-text">{error}</p>}
-          <button className="btn btn-primary" type="submit" disabled={saving}>
-            {saving ? "Salvando..." : "Adicionar anotação"}
-          </button>
-        </form>
-      </div>
+      {error && (
+        <div className="card">
+          <p className="error-text">{error}</p>
+        </div>
+      )}
 
       <div className="card">
         {notes.length === 0 ? (
@@ -138,14 +92,47 @@ export default function AnotacoesPage() {
             Nenhuma anotação ainda.
           </p>
         ) : (
-          notes.map((note) => (
-            <div className="timeline-item" key={note.id}>
-              <span className="timeline-date">{fmtDate(note.date)}</span>
-              <span>{note.text}</span>
-            </div>
-          ))
+          <div className="notes-timeline">
+            {notes.map((note, i) => {
+              const { day, month } = badgeParts(note.date);
+              const color = BADGE_COLORS[i % BADGE_COLORS.length];
+              const isLast = i === notes.length - 1;
+              return (
+                <div className="notes-timeline-item" key={note.id} onClick={() => setEditingNote(note)}>
+                  <div className="notes-badge-col">
+                    <div className="notes-badge" style={{ background: color }}>
+                      {day}
+                      <span>{month}</span>
+                    </div>
+                    {!isLast && <div className="notes-connector" />}
+                  </div>
+                  <div className="notes-content">
+                    <span className="notes-dot" style={{ background: color }} />
+                    <p>{note.text}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
+
+      <button className="btn btn-primary" onClick={() => setShowForm(true)}>
+        + Nova anotação
+      </button>
+
+      {showForm && (
+        <NoteForm periodId={period.id} onClose={() => setShowForm(false)} onSaved={load} />
+      )}
+
+      {editingNote && (
+        <NoteForm
+          periodId={period.id}
+          editingNote={editingNote}
+          onClose={() => setEditingNote(null)}
+          onSaved={load}
+        />
+      )}
     </>
   );
 }

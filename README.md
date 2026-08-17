@@ -111,3 +111,16 @@ e novos componentes de UI).
 - **Histórico reestruturado**: agora tem duas seções — um log de consumo
   com abas Dia/Semana/Mês (novo) do período atual, e a comparação entre
   períodos (que já existia na V2) logo abaixo.
+
+### v4.1 — editar/excluir e timeline de anotações
+
+- **Editar e excluir leituras**: na Evolução do Início, aba "Tabela", toque
+  em qualquer leitura pra abrir o formulário de edição (com botão de
+  excluir). Novas rotas `PATCH`/`DELETE` em `/api/readings/[id]`.
+- **Editar e excluir anotações**: mesma ideia em Anotações — toque numa
+  anotação pra editar ou excluir. Novas rotas `PATCH`/`DELETE` em
+  `/api/notes/[id]`.
+- **Anotações redesenhadas**: timeline com selo circular colorido
+  (dia + mês abreviado) conectado por uma linha vertical, ponto colorido
+  ao lado do texto, e botão "+ Nova anotação" fixo embaixo — no estilo do
+  mockup fornecido.
