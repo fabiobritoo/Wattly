@@ -446,7 +446,7 @@ export default function DashboardPage() {
       {showForm && (
         <ReadingForm
           periodId={period.id}
-          lastKwh={s.hasReadings ? period.initial_kwh + s.accumulatedKwh : null}
+          lastKwh={s.hasReadings ? Number(period.initial_kwh) + s.accumulatedKwh : null}
           onClose={() => setShowForm(false)}
           onSaved={load}
         />
@@ -455,7 +455,7 @@ export default function DashboardPage() {
       {editingReading && (
         <ReadingForm
           periodId={period.id}
-          lastKwh={s.hasReadings ? period.initial_kwh + s.accumulatedKwh : null}
+          lastKwh={s.hasReadings ? Number(period.initial_kwh) + s.accumulatedKwh : null}
           editingReading={editingReading}
           onClose={() => setEditingReading(null)}
           onSaved={load}

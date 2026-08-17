@@ -1,10 +1,13 @@
 import { getSql, migrate } from "@/lib/db";
-import { jsonNoStore, errorResponse } from "@/lib/api";
+import { jsonNoStore, errorResponse, normalizeNumericFields } from "@/lib/api";
 import { computeSummary } from "@/lib/calc";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
+
+const PERIOD_NUMERIC_FIELDS = ["initial_kwh", "goal_kwh", "tariff_rate", "flag_surcharge_rate", "fixed_fees_reais"] as const;
+const READING_NUMERIC_FIELDS = ["kwh_reading"] as const;
 
 export async function GET() {
   try {
@@ -60,8 +63,8 @@ export async function GET() {
     );
 
     return jsonNoStore({
-      period,
-      readings,
+      period: normalizeNumericFields(period, PERIOD_NUMERIC_FIELDS),
+      readings: readings.map((r: any) => normalizeNumericFields(r, READING_NUMERIC_FIELDS)),
       lastNote: notes[0] ?? null,
       summary,
     });

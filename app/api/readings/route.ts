@@ -1,9 +1,11 @@
 import { getSql, migrate } from "@/lib/db";
-import { jsonNoStore, errorResponse } from "@/lib/api";
+import { jsonNoStore, errorResponse, normalizeNumericFields } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
+
+const READING_NUMERIC_FIELDS = ["kwh_reading"] as const;
 
 export async function GET(req: Request) {
   try {
@@ -20,7 +22,7 @@ export async function GET(req: Request) {
       WHERE period_id = ${periodId}
       ORDER BY reading_at ASC
     `;
-    return jsonNoStore({ readings: rows });
+    return jsonNoStore({ readings: rows.map((r: any) => normalizeNumericFields(r, READING_NUMERIC_FIELDS)) });
   } catch (err) {
     return errorResponse(err);
   }
@@ -47,7 +49,7 @@ export async function POST(req: Request) {
       VALUES (${period_id}, ${reading_at}, ${kwh_reading})
       RETURNING id, period_id, to_char(reading_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS reading_at, kwh_reading
     `;
-    return jsonNoStore({ reading: rows[0] });
+    return jsonNoStore({ reading: normalizeNumericFields(rows[0], READING_NUMERIC_FIELDS) });
   } catch (err) {
     return errorResponse(err);
   }

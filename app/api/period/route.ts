@@ -1,11 +1,12 @@
 import { getSql, migrate } from "@/lib/db";
-import { jsonNoStore, errorResponse } from "@/lib/api";
+import { jsonNoStore, errorResponse, normalizeNumericFields } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
 const VALID_FLAGS = new Set(["verde", "amarela", "vermelha_1", "vermelha_2"]);
+const PERIOD_NUMERIC_FIELDS = ["initial_kwh", "goal_kwh", "tariff_rate", "flag_surcharge_rate", "fixed_fees_reais"] as const;
 
 export async function GET() {
   try {
@@ -18,7 +19,8 @@ export async function GET() {
       ORDER BY created_at DESC
       LIMIT 1
     `;
-    return jsonNoStore({ period: rows[0] ?? null });
+    const period = rows[0] ? normalizeNumericFields(rows[0], PERIOD_NUMERIC_FIELDS) : null;
+    return jsonNoStore({ period });
   } catch (err) {
     return errorResponse(err);
   }
@@ -90,7 +92,7 @@ export async function POST(req: Request) {
       `;
     }
 
-    return jsonNoStore({ period: rows[0] });
+    return jsonNoStore({ period: normalizeNumericFields(rows[0], PERIOD_NUMERIC_FIELDS) });
   } catch (err) {
     return errorResponse(err);
   }

@@ -21,7 +21,7 @@ export default function GlobalAddReadingFab() {
       if (!res.ok) return;
       if (data.period) {
         setPeriod({ id: data.period.id, initial_kwh: data.period.initial_kwh });
-        setLastKwh(data.summary?.hasReadings ? data.period.initial_kwh + data.summary.accumulatedKwh : null);
+        setLastKwh(data.summary?.hasReadings ? Number(data.period.initial_kwh) + data.summary.accumulatedKwh : null);
       } else {
         setPeriod(null);
         setLastKwh(null);

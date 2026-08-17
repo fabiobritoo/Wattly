@@ -152,3 +152,18 @@ e novos componentes de UI).
   tem um linkzinho discreto "ver leituras mais antigas" que abre a lista
   completa de leituras do período (não só as últimas 5), com o mesmo
   toque-para-editar de sempre.
+
+### v4.2.1 — correção: "consumo desde a última leitura" absurdo
+
+- **Bug corrigido**: o campo "Consumo desde a última leitura" no
+  formulário de registrar leitura podia mostrar um número gigante e
+  errado (ex: -393.920 kWh). Causa: o driver do Postgres retorna colunas
+  `NUMERIC` como texto, não como número — e o app fazia
+  `period.initial_kwh + consumo` em vários lugares, o que virava
+  concatenação de string ("4010" + 54 = "401054") em vez de soma.
+- Corrigido na raiz: toda rota da API que retorna campos numéricos do
+  período ou das leituras (`initial_kwh`, `goal_kwh`, `tariff_rate`,
+  `flag_surcharge_rate`, `fixed_fees_reais`, `kwh_reading`) agora converte
+  explicitamente para número antes de responder (`lib/api.ts`,
+  `normalizeNumericFields`). Reforço defensivo também no frontend, nos
+  pontos que já faziam essa soma diretamente.

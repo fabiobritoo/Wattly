@@ -14,3 +14,30 @@ export function errorResponse(err: unknown, status = 500) {
     { status, headers: { "Cache-Control": "no-store" } }
   );
 }
+
+/**
+ * The Postgres driver returns NUMERIC/DECIMAL columns as strings (to avoid
+ * silent float precision loss), not as JS numbers. Every API response that
+ * includes one of these columns MUST convert it with this helper before
+ * sending JSON — otherwise frontend code that does `a + b` arithmetic on
+ * these fields silently does string concatenation instead of addition
+ * (e.g. "4010" + 54 === "401054", not 4064). Division/multiplication don't
+ * have this problem (JS auto-coerces for those operators), but `+` does.
+ */
+export function toNum(v: unknown): number | null {
+  if (v === null || v === undefined) return null;
+  const n = Number(v);
+  return Number.isNaN(n) ? null : n;
+}
+
+/** Converts every field in `keys` on `obj` via toNum(), returning a new object. */
+export function normalizeNumericFields<T extends Record<string, any>>(
+  obj: T,
+  keys: readonly (keyof T)[]
+): T {
+  const out = { ...obj };
+  for (const key of keys) {
+    out[key] = toNum(obj[key]) as any;
+  }
+  return out;
+}

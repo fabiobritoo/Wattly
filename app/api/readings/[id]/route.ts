@@ -1,9 +1,11 @@
 import { getSql, migrate } from "@/lib/db";
-import { jsonNoStore, errorResponse } from "@/lib/api";
+import { jsonNoStore, errorResponse, normalizeNumericFields } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
+
+const READING_NUMERIC_FIELDS = ["kwh_reading"] as const;
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -27,7 +29,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (rows.length === 0) {
       return errorResponse(new Error("Leitura não encontrada."), 404);
     }
-    return jsonNoStore({ reading: rows[0] });
+    return jsonNoStore({ reading: normalizeNumericFields(rows[0], READING_NUMERIC_FIELDS) });
   } catch (err) {
     return errorResponse(err);
   }

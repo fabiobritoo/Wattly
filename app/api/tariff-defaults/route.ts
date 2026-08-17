@@ -1,11 +1,12 @@
 import { getSql, migrate } from "@/lib/db";
-import { jsonNoStore, errorResponse } from "@/lib/api";
+import { jsonNoStore, errorResponse, normalizeNumericFields } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
 const VALID_FLAGS = new Set(["verde", "amarela", "vermelha_1", "vermelha_2"]);
+const DEFAULTS_NUMERIC_FIELDS = ["tariff_rate", "flag_surcharge_rate", "fixed_fees_reais"] as const;
 
 export async function GET() {
   try {
@@ -16,7 +17,8 @@ export async function GET() {
       FROM tariff_defaults
       WHERE id = 1
     `;
-    return jsonNoStore({ defaults: rows[0] ?? null });
+    const defaults = rows[0] ? normalizeNumericFields(rows[0], DEFAULTS_NUMERIC_FIELDS) : null;
+    return jsonNoStore({ defaults });
   } catch (err) {
     return errorResponse(err);
   }
@@ -54,7 +56,7 @@ export async function POST(req: Request) {
       RETURNING tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais
     `;
 
-    return jsonNoStore({ defaults: rows[0] });
+    return jsonNoStore({ defaults: normalizeNumericFields(rows[0], DEFAULTS_NUMERIC_FIELDS) });
   } catch (err) {
     return errorResponse(err);
   }
