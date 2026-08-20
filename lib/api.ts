@@ -16,6 +16,24 @@ export function errorResponse(err: unknown, status = 500) {
 }
 
 /**
+ * A reading that breaks the "meter only increases" assumption isn't
+ * rejected outright — it's very likely a typo, but a real meter swap or
+ * correction can legitimately produce one. Returns 409 with enough context
+ * for the client to show a confirmation prompt; the client resubmits with
+ * `force: true` to save anyway.
+ */
+export function decreasingReadingConflict(params: {
+  kwh_reading: number;
+  previous: { reading_at: string; kwh_reading: number } | null;
+  next: { reading_at: string; kwh_reading: number } | null;
+}) {
+  return NextResponse.json(
+    { warning: "decreasing_reading", ...params },
+    { status: 409, headers: { "Cache-Control": "no-store" } }
+  );
+}
+
+/**
  * The Postgres driver returns NUMERIC/DECIMAL columns as strings (to avoid
  * silent float precision loss), not as JS numbers. Every API response that
  * includes one of these columns MUST convert it with this helper before

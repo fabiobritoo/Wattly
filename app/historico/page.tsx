@@ -245,12 +245,22 @@ export default function HistoricoPage() {
               <p className="period-range" style={{ margin: 0 }}>
                 {fmtDate(p.start_date)} — {fmtDate(p.end_date)}
               </p>
-              {p.isCurrent && (
-                <span className="status-pill status-ok" style={{ padding: "3px 10px", fontSize: 11 }}>
-                  <span className="status-dot" />
-                  Atual
-                </span>
-              )}
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <a
+                  className="link-btn"
+                  href={`/api/report?period_id=${p.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Relatório
+                </a>
+                {p.isCurrent && (
+                  <span className="status-pill status-ok" style={{ padding: "3px 10px", fontSize: 11 }}>
+                    <span className="status-dot" />
+                    Atual
+                  </span>
+                )}
+              </div>
             </div>
 
             {!s.hasReadings ? (

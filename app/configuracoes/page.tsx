@@ -245,9 +245,21 @@ export default function ConfiguracoesPage() {
       </h1>
 
       <div className="card">
-        <p className="card-label" style={{ marginBottom: 12 }}>
-          {mode === "new" ? "Novo período" : period ? "Editar período atual" : "Configurar período"}
-        </p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <p className="card-label" style={{ marginBottom: 0 }}>
+            {mode === "new" ? "Novo período" : period ? "Editar período atual" : "Configurar período"}
+          </p>
+          {mode === "edit" && period && (
+            <a
+              className="link-btn"
+              href={`/api/report?period_id=${period.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Ver relatório
+            </a>
+          )}
+        </div>
 
         {mode === "new" && (
           <p style={{ fontSize: 13, color: "var(--color-text-muted)", marginBottom: 14 }}>

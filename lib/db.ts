@@ -154,3 +154,52 @@ export async function migrate() {
 
   migrated = true;
 }
+
+export type NeighborReading = { id: number; reading_at: string; kwh_reading: number } | null;
+
+/**
+ * Finds the reading immediately before and immediately after a given point
+ * in time within a period (excluding `excludeId`, used when editing a
+ * reading in place). Used to validate that meter readings only increase —
+ * a reading lower than its predecessor (or higher than its successor)
+ * almost always means a typo, not an actual meter rollback.
+ */
+export async function getNeighborReadings(
+  periodId: number | string,
+  readingAt: string,
+  excludeId?: number | string
+): Promise<{ previous: NeighborReading; next: NeighborReading }> {
+  const sql = getSql();
+  // Coerce to a real number (not a string) so the bind parameter matches
+  // the integer `id` column type — Postgres won't implicitly cast a text
+  // parameter against an integer column for `IS DISTINCT FROM`.
+  const excludeIdNum = excludeId !== undefined && excludeId !== null ? Number(excludeId) : null;
+
+  const previousRows = await sql`
+    SELECT id, to_char(reading_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS reading_at, kwh_reading
+    FROM readings
+    WHERE period_id = ${periodId}
+      AND reading_at < ${readingAt}
+      AND id IS DISTINCT FROM ${excludeIdNum}
+    ORDER BY reading_at DESC
+    LIMIT 1
+  `;
+  const nextRows = await sql`
+    SELECT id, to_char(reading_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS reading_at, kwh_reading
+    FROM readings
+    WHERE period_id = ${periodId}
+      AND reading_at > ${readingAt}
+      AND id IS DISTINCT FROM ${excludeIdNum}
+    ORDER BY reading_at ASC
+    LIMIT 1
+  `;
+
+  return {
+    previous: previousRows[0]
+      ? { id: previousRows[0].id, reading_at: previousRows[0].reading_at, kwh_reading: Number(previousRows[0].kwh_reading) }
+      : null,
+    next: nextRows[0]
+      ? { id: nextRows[0].id, reading_at: nextRows[0].reading_at, kwh_reading: Number(nextRows[0].kwh_reading) }
+      : null,
+  };
+}

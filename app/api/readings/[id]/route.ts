@@ -1,5 +1,5 @@
-import { getSql, migrate } from "@/lib/db";
-import { jsonNoStore, errorResponse, normalizeNumericFields } from "@/lib/api";
+import { getSql, migrate, getNeighborReadings } from "@/lib/db";
+import { jsonNoStore, errorResponse, normalizeNumericFields, decreasingReadingConflict } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -11,16 +11,33 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   try {
     await migrate();
     const body = await req.json();
-    const { reading_at, kwh_reading } = body ?? {};
+    const { reading_at, kwh_reading, force } = body ?? {};
 
     if (!reading_at || kwh_reading === undefined || kwh_reading === null || kwh_reading === "") {
       return errorResponse(new Error("Campos obrigatórios: reading_at, kwh_reading."), 400);
     }
 
+    const kwhNum = Number(kwh_reading);
     const sql = getSql();
+
+    const existingRows = await sql`SELECT period_id FROM readings WHERE id = ${params.id}`;
+    if (existingRows.length === 0) {
+      return errorResponse(new Error("Leitura não encontrada."), 404);
+    }
+    const periodId = existingRows[0].period_id;
+
+    if (!force) {
+      const { previous, next } = await getNeighborReadings(periodId, reading_at, params.id);
+      const decreasesFromPrevious = previous != null && kwhNum < previous.kwh_reading;
+      const increasesAboveNext = next != null && kwhNum > next.kwh_reading;
+      if (decreasesFromPrevious || increasesAboveNext) {
+        return decreasingReadingConflict({ kwh_reading: kwhNum, previous, next });
+      }
+    }
+
     const rows = await sql`
       UPDATE readings
-      SET reading_at = ${reading_at}, kwh_reading = ${kwh_reading}
+      SET reading_at = ${reading_at}, kwh_reading = ${kwhNum}
       WHERE id = ${params.id}
       RETURNING id, period_id,
                 to_char(reading_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS reading_at,

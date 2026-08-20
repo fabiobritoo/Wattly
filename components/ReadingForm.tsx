@@ -21,6 +21,41 @@ function toLocalDateTimeInputValue(iso: string) {
   return new Date(d.getTime() - tzOffsetMs).toISOString().slice(0, 16);
 }
 
+function fmtKwhShort(v: number) {
+  return v.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
+function fmtDateTimeShort(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+/**
+ * Builds the confirmation message for a reading that breaks the
+ * "meter only increases" assumption — could be either lower than the
+ * previous reading, or higher than a later one (when editing a reading
+ * that sits between two others).
+ */
+function decreasingConfirmMessage(data: {
+  kwh_reading: number;
+  previous: { reading_at: string; kwh_reading: number } | null;
+  next: { reading_at: string; kwh_reading: number } | null;
+}) {
+  const lines = [`Confirma o valor ${fmtKwhShort(data.kwh_reading)} kWh?`, ""];
+  if (data.previous && data.kwh_reading < data.previous.kwh_reading) {
+    lines.push(
+      `É menor que a leitura anterior (${fmtKwhShort(data.previous.kwh_reading)} kWh em ${fmtDateTimeShort(data.previous.reading_at)}).`
+    );
+  }
+  if (data.next && data.kwh_reading > data.next.kwh_reading) {
+    lines.push(
+      `É maior que a leitura seguinte (${fmtKwhShort(data.next.kwh_reading)} kWh em ${fmtDateTimeShort(data.next.reading_at)}).`
+    );
+  }
+  lines.push("", "Isso geralmente indica erro de digitação. Toque OK para salvar mesmo assim, ou Cancelar para corrigir.");
+  return lines.join("\n");
+}
+
 export default function ReadingForm({
   periodId,
   lastKwh,
@@ -47,6 +82,50 @@ export default function ReadingForm({
   const kwhValue = kwh ? Number(kwh) : null;
   const delta = lastKwh != null && kwhValue != null && !Number.isNaN(kwhValue) ? kwhValue - lastKwh : null;
 
+  async function saveReading(readingAt: string, kwhNum: number, force: boolean): Promise<boolean> {
+    if (isEditing && editingReading) {
+      const res = await fetch(`/api/readings/${editingReading.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reading_at: readingAt, kwh_reading: kwhNum, force }),
+      });
+      const data = await res.json();
+      if (res.status === 409 && data.warning === "decreasing_reading") {
+        if (confirm(decreasingConfirmMessage(data))) {
+          return saveReading(readingAt, kwhNum, true);
+        }
+        return false;
+      }
+      if (!res.ok) throw new Error(data.error || "Erro ao salvar leitura.");
+      return true;
+    }
+
+    const readingRes = await fetch("/api/readings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ period_id: periodId, reading_at: readingAt, kwh_reading: kwhNum, force }),
+    });
+    const readingData = await readingRes.json();
+    if (readingRes.status === 409 && readingData.warning === "decreasing_reading") {
+      if (confirm(decreasingConfirmMessage(readingData))) {
+        return saveReading(readingAt, kwhNum, true);
+      }
+      return false;
+    }
+    if (!readingRes.ok) throw new Error(readingData.error || "Erro ao salvar leitura.");
+
+    if (note.trim()) {
+      const noteRes = await fetch("/api/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ period_id: periodId, date: readingAt.slice(0, 10), text: note.trim() }),
+      });
+      const noteData = await noteRes.json();
+      if (!noteRes.ok) throw new Error(noteData.error || "Erro ao salvar anotação.");
+    }
+    return true;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -63,32 +142,11 @@ export default function ReadingForm({
       // browser's local timezone) and send as ISO/UTC to the API.
       const readingAt = new Date(dateTime).toISOString();
 
-      if (isEditing && editingReading) {
-        const res = await fetch(`/api/readings/${editingReading.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reading_at: readingAt, kwh_reading: Number(kwh) }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Erro ao salvar leitura.");
-      } else {
-        const readingRes = await fetch("/api/readings", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ period_id: periodId, reading_at: readingAt, kwh_reading: Number(kwh) }),
-        });
-        const readingData = await readingRes.json();
-        if (!readingRes.ok) throw new Error(readingData.error || "Erro ao salvar leitura.");
-
-        if (note.trim()) {
-          const noteRes = await fetch("/api/notes", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ period_id: periodId, date: readingAt.slice(0, 10), text: note.trim() }),
-          });
-          const noteData = await noteRes.json();
-          if (!noteRes.ok) throw new Error(noteData.error || "Erro ao salvar anotação.");
-        }
+      const saved = await saveReading(readingAt, Number(kwh), false);
+      if (!saved) {
+        // User cancelled the "lower than previous" confirmation — leave the
+        // form open so they can correct the value instead of losing it.
+        return;
       }
 
       broadcastDataChanged();
