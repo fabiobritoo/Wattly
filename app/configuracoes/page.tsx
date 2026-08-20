@@ -52,6 +52,35 @@ export default function ConfiguracoesPage() {
   const [flagSurcharge, setFlagSurcharge] = useState("");
   const [fixedFees, setFixedFees] = useState("");
 
+  // "Calibrar pela fatura" — lets the user re-derive tariff_rate,
+  // flag_surcharge_rate and fixed_fees_reais straight from the numbers
+  // printed on a real bill, instead of trusting stale defaults. The ANEEL
+  // base rate for the bandeira surcharge doesn't include taxes (ICMS/PIS/
+  // COFINS), while the energy rate here is already tax-inclusive — so a
+  // bandeira ≠ verde period calibrated only from the ANEEL default tends to
+  // under-estimate cost. Real bills are the source of truth.
+  const [showCalibrate, setShowCalibrate] = useState(false);
+  const [calKwh, setCalKwh] = useState("");
+  const [calEnergyReais, setCalEnergyReais] = useState("");
+  const [calFlagReais, setCalFlagReais] = useState("");
+  const [calOtherReais, setCalOtherReais] = useState("");
+
+  function applyCalibration() {
+    const kwh = Number(calKwh);
+    if (!kwh || kwh <= 0) return;
+
+    const energy = Number(calEnergyReais || 0);
+    const flag = Number(calFlagReais || 0);
+    const other = Number(calOtherReais || 0);
+
+    setTariffRate((energy / kwh).toFixed(8));
+    if (flag > 0) {
+      setFlagSurcharge(((flag / kwh) * 100).toFixed(4));
+    }
+    setFixedFees(other.toFixed(2));
+    setShowCalibrate(false);
+  }
+
   function fillFormFrom(p: Period) {
     setStartDate(p.start_date);
     setEndDate(p.end_date);
@@ -331,6 +360,89 @@ export default function ConfiguracoesPage() {
             </p>
           </div>
 
+          <div className="field" style={{ marginTop: -6 }}>
+            <button
+              type="button"
+              className="link-btn"
+              onClick={() => setShowCalibrate((v) => !v)}
+              style={{ fontSize: 13 }}
+            >
+              {showCalibrate ? "Fechar calibração" : "Calibrar pela última fatura"}
+            </button>
+          </div>
+
+          {showCalibrate && (
+            <div
+              style={{
+                background: "var(--color-bg)",
+                borderRadius: "var(--radius-md)",
+                padding: "14px 16px",
+                marginBottom: 16,
+              }}
+            >
+              <p style={{ fontSize: 12.5, color: "var(--color-text-muted)", marginTop: 0, marginBottom: 10 }}>
+                Preencha com os valores exatos do boleto e a tarifa, a bandeira e as taxas fixas são
+                recalculadas automaticamente — evita ter que fazer conta de cabeça, e reduz o erro entre a
+                previsão e a fatura real.
+              </p>
+              <div className="field">
+                <label htmlFor="cal-kwh">Consumo do boleto (kWh)</label>
+                <input
+                  id="cal-kwh"
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  placeholder="Ex: 92"
+                  value={calKwh}
+                  onChange={(e) => setCalKwh(e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="cal-energy">Valor de "Consumo-TUSD" + "Consumo-TE" (R$)</label>
+                <input
+                  id="cal-energy"
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  placeholder="Ex: 97.03"
+                  value={calEnergyReais}
+                  onChange={(e) => setCalEnergyReais(e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="cal-flag">Valor da linha "Acrés. Bandeira" (R$) — 0 se verde</label>
+                <input
+                  id="cal-flag"
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  placeholder="Ex: 2.28"
+                  value={calFlagReais}
+                  onChange={(e) => setCalFlagReais(e.target.value)}
+                />
+              </div>
+              <div className="field" style={{ marginBottom: 12 }}>
+                <label htmlFor="cal-other">Soma de tudo mais (iluminação, ICMS-CDE, créditos...) (R$)</label>
+                <input
+                  id="cal-other"
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  placeholder="Ex: 2.00 (pode ser negativo)"
+                  value={calOtherReais}
+                  onChange={(e) => setCalOtherReais(e.target.value)}
+                />
+                <p style={{ fontSize: 11.5, color: "var(--color-text-muted)", margin: "2px 0 0" }}>
+                  Some linhas como "Ilum. Púb. Municipal" e "ICMS-CDE", e subtraia créditos (ex: linha
+                  "ITAIPU" negativa). O resultado pode ser negativo — e costuma variar de mês a mês.
+                </p>
+              </div>
+              <button type="button" className="btn btn-secondary" onClick={applyCalibration}>
+                Calcular e preencher os campos abaixo
+              </button>
+            </div>
+          )}
+
           {tariffRate && (
             <>
               <div className="field">
@@ -368,9 +480,10 @@ export default function ConfiguracoesPage() {
                     onChange={(e) => setFlagSurcharge(e.target.value)}
                   />
                   <p style={{ fontSize: 12, color: "var(--color-text-muted)", margin: "-2px 0 0" }}>
-                    Valor oficial da ANEEL para essa bandeira: R${" "}
-                    {ANEEL_FLAG_SURCHARGE_PER_100KWH[tariffFlag].toLocaleString("pt-BR", { minimumFractionDigits: 3 })}{" "}
-                    a cada 100 kWh. Já preenchido — só mude se souber de um valor mais recente.
+                    R$ {ANEEL_FLAG_SURCHARGE_PER_100KWH[tariffFlag].toLocaleString("pt-BR", { minimumFractionDigits: 3 })}{" "}
+                    a cada 100 kWh é o valor oficial da ANEEL, mas ele não inclui ICMS/PIS/COFINS — no boleto
+                    real, o valor da linha "Bandeira" costuma vir mais alto. Use "Calibrar pela última fatura"
+                    acima para pegar o valor exato que você está pagando.
                   </p>
                 </div>
               )}
@@ -388,7 +501,8 @@ export default function ConfiguracoesPage() {
                 />
                 <p style={{ fontSize: 12, color: "var(--color-text-muted)", margin: "-2px 0 0" }}>
                   Itens do boleto que não variam com o consumo, como "Ilum. Púb. Municipal" e pequenas
-                  taxas (ICMS-CDE, etc). Some tudo isso e informe aqui.
+                  taxas (ICMS-CDE, etc). Pode ser negativo se houver créditos (ex: linha "ITAIPU"). Esse
+                  valor costuma variar de um boleto para outro — vale reconferir todo mês.
                 </p>
               </div>
             </>

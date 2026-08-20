@@ -122,7 +122,7 @@ export async function migrate() {
   // since ICMS % varies by state. Only fires if no default row exists yet.
   await sql`
     INSERT INTO tariff_defaults (id, tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais)
-    VALUES (1, 1.07540168, 'amarela', 1.885, 29.45)
+    VALUES (1, 1.05474476, 'amarela', 2.4783, 2.00)
     ON CONFLICT (id) DO NOTHING
   `;
   // Backfill: any period saved before a tariff was configured gets these
@@ -130,10 +130,10 @@ export async function migrate() {
   // idempotent, since it only ever touches rows that are still unset.
   await sql`
     UPDATE periods
-    SET tariff_rate = 1.07540168,
+    SET tariff_rate = 1.05474476,
         tariff_flag = 'amarela',
-        flag_surcharge_rate = 1.885,
-        fixed_fees_reais = 29.45
+        flag_surcharge_rate = 2.4783,
+        fixed_fees_reais = 2.00
     WHERE tariff_rate IS NULL
   `;
   // Correction: the app briefly used R$2.5253/100kWh (bill-derived, with
@@ -150,6 +150,36 @@ export async function migrate() {
     UPDATE periods
     SET flag_surcharge_rate = 1.885
     WHERE tariff_flag = 'amarela' AND ROUND(flag_surcharge_rate::numeric, 4) = 2.5253
+  `;
+
+  // Correction #2 (08/2026 bill, ref. NF/Neoenergia PE, 92 kWh, bandeira
+  // amarela): the "official ANEEL base rate" swap above was itself a
+  // regression. tariff_rate is (and always was) tax-inclusive — it comes
+  // straight from the bill's "PREÇO UNIT. COM TRIB." column — but the
+  // ANEEL base rate for the bandeira does NOT include ICMS/PIS/COFINS,
+  // so pairing a tax-inclusive energy rate with a tax-exclusive bandeira
+  // rate systematically under-estimated cost. This app has exactly one
+  // user, so there's no "other states" concern to hedge for — the real,
+  // taxed value from an actual bill is strictly the better default.
+  // Verified from the 08/2026 bill: TUSD 0.70664440 + TE 0.34810036 =
+  // R$1,05474476/kWh; bandeira amarela R$2,28 / 92 kWh × 100 =
+  // R$2,4783/100kWh; fixed items (Ilum. Púb. R$14,04 + ICMS-CDE R$1,11 −
+  // crédito ITAIPU R$13,15) = R$2,00 net (this bucket swings a lot month
+  // to month because of the ITAIPU credit line, so it's recalibrated more
+  // often than the other two — see the "Calibrar pela última fatura" tool).
+  await sql`
+    UPDATE tariff_defaults
+    SET tariff_rate = 1.05474476, flag_surcharge_rate = 2.4783, fixed_fees_reais = 2.00
+    WHERE tariff_flag = 'amarela'
+      AND ROUND(tariff_rate::numeric, 4) = 1.0754
+      AND ROUND(flag_surcharge_rate::numeric, 4) = 1.885
+  `;
+  await sql`
+    UPDATE periods
+    SET tariff_rate = 1.05474476, flag_surcharge_rate = 2.4783, fixed_fees_reais = 2.00
+    WHERE tariff_flag = 'amarela'
+      AND ROUND(tariff_rate::numeric, 4) = 1.0754
+      AND ROUND(flag_surcharge_rate::numeric, 4) = 1.885
   `;
 
   migrated = true;
