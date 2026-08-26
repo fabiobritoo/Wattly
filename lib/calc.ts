@@ -59,12 +59,6 @@ function dateOnly(isoDateTime: string): string {
   return isoDateTime.slice(0, 10);
 }
 
-function addDaysToDateStr(dateStr: string, n: number): string {
-  const d = toDate(dateStr);
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-}
-
 function fmt(v: number, decimals = 1): string {
   return v.toLocaleString("pt-BR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
@@ -94,46 +88,62 @@ function estimateCostReais(kwh: number, period: Period, includeFixedFees: boolea
 }
 
 /**
- * Breaks total consumption down into one entry per calendar day, using the
- * last reading of each day as that day's "closing" meter value. When there's
- * a gap between two days with readings (e.g. user skipped a day), the
- * consumption across the gap is spread evenly across the missing days
- * instead of being dumped entirely onto the next reading's day — otherwise
- * a single missed day would falsely look like the "worst day".
+ * Breaks total consumption down into one entry per calendar day.
+ *
+ * Each interval between two consecutive readings has a known total delta
+ * (kWh) and a known duration (real elapsed time, from the readings'
+ * timestamps — not just calendar dates). When that interval spans more
+ * than one calendar day, the delta is split proportionally by how many
+ * hours of the interval actually fall on each day, assuming a constant
+ * consumption rate within the interval (the only assumption possible with
+ * two endpoint readings and nothing in between).
+ *
+ * This is what correctly handles a reading taken mid-morning instead of
+ * at day's end: only the hours that actually elapsed *that* day get
+ * credited to it, and the remaining hours (overnight, into the next
+ * reading) roll over to the following day(s) — instead of the whole gap
+ * being dumped onto whichever day happens to have the next reading, which
+ * used to make an ordinary day look like a consumption spike just because
+ * the previous reading was taken early.
  */
 function computeDailyBreakdown(period: Period, readings: Reading[]): DayConsumption[] {
-  const closing = new Map<string, number>();
   const sorted = [...readings].sort((a, b) => (a.reading_at < b.reading_at ? -1 : 1));
-  for (const r of sorted) {
-    closing.set(dateOnly(r.reading_at), Number(r.kwh_reading));
-  }
+  if (sorted.length === 0) return [];
 
-  const dates = Array.from(closing.keys()).sort();
-  if (dates.length === 0) return [];
+  // Prepend the period's start as an implicit first point (midnight UTC of
+  // start_date, at initial_kwh) so the interval up to the first real
+  // reading is also split proportionally instead of landing entirely on
+  // whichever day that first reading happens to be on.
+  const points: { at: number; kwh: number }[] = [
+    { at: toDate(period.start_date).getTime(), kwh: Number(period.initial_kwh) },
+    ...sorted.map((r) => ({ at: new Date(r.reading_at).getTime(), kwh: Number(r.kwh_reading) })),
+  ];
 
-  const results: DayConsumption[] = [];
-  let prevDate = period.start_date;
-  let prevValue = Number(period.initial_kwh);
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const byDay = new Map<string, number>();
 
-  for (const d of dates) {
-    const gapDays = daysBetween(toDate(prevDate), toDate(d));
-    const closingValue = closing.get(d)!;
-    const totalDelta = closingValue - prevValue;
+  for (let i = 0; i < points.length - 1; i++) {
+    const t0 = points[i].at;
+    const t1 = points[i + 1].at;
+    const delta = points[i + 1].kwh - points[i].kwh;
+    const durationMs = t1 - t0;
+    if (durationMs <= 0) continue; // out-of-order or duplicate timestamps — skip defensively
 
-    if (gapDays <= 0) {
-      results.push({ date: d, consumption: totalDelta });
-    } else {
-      const perDay = totalDelta / gapDays;
-      for (let i = 1; i <= gapDays; i++) {
-        results.push({ date: addDaysToDateStr(prevDate, i), consumption: perDay });
-      }
+    const ratePerMs = delta / durationMs;
+    let cursor = t0;
+    while (cursor < t1) {
+      const cursorDateStr = new Date(cursor).toISOString().slice(0, 10);
+      const nextMidnight = toDate(cursorDateStr).getTime() + DAY_MS;
+      const segmentEnd = Math.min(nextMidnight, t1);
+      const segmentShare = ratePerMs * (segmentEnd - cursor);
+      byDay.set(cursorDateStr, (byDay.get(cursorDateStr) ?? 0) + segmentShare);
+      cursor = segmentEnd;
     }
-
-    prevDate = d;
-    prevValue = closingValue;
   }
 
-  return results;
+  return Array.from(byDay.entries())
+    .map(([date, consumption]) => ({ date, consumption }))
+    .sort((a, b) => (a.date < b.date ? -1 : 1));
 }
 
 /**

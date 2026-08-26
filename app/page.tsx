@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import EvolutionChart from "@/components/EvolutionChart";
+import DailyConsumptionChart from "@/components/DailyConsumptionChart";
 import ReadingForm from "@/components/ReadingForm";
 import RhythmGauge from "@/components/RhythmGauge";
 import AllReadingsModal from "@/components/AllReadingsModal";
@@ -34,6 +35,7 @@ type Summary = {
   goalExceededNow: boolean;
   bestDay: { date: string; consumption: number } | null;
   worstDay: { date: string; consumption: number } | null;
+  dailyBreakdown: { date: string; consumption: number }[];
   alertLevel: "none" | "warning" | "danger";
   alertMessage: string | null;
   currentCostReais: number | null;
@@ -148,7 +150,7 @@ export default function DashboardPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingReading, setEditingReading] = useState<Reading | null>(null);
   const [showAllReadings, setShowAllReadings] = useState(false);
-  const [evolutionView, setEvolutionView] = useState<"chart" | "table">("chart");
+  const [evolutionView, setEvolutionView] = useState<"chart" | "daily" | "table">("daily");
 
   const load = useCallback(async () => {
     try {
@@ -296,6 +298,14 @@ export default function DashboardPage() {
               </button>
               <button
                 type="button"
+                className={`platform-tab${evolutionView === "daily" ? " active" : ""}`}
+                style={{ padding: "6px 12px", fontSize: 12 }}
+                onClick={() => setEvolutionView("daily")}
+              >
+                Por dia
+              </button>
+              <button
+                type="button"
                 className={`platform-tab${evolutionView === "table" ? " active" : ""}`}
                 style={{ padding: "6px 12px", fontSize: 12 }}
                 onClick={() => setEvolutionView("table")}
@@ -314,6 +324,26 @@ export default function DashboardPage() {
               forecastFinalKwh={s.forecastFinalKwh}
               goalKwh={period.goal_kwh}
             />
+          ) : evolutionView === "daily" ? (
+            <>
+              <DailyConsumptionChart
+                days={s.dailyBreakdown}
+                referenceKwh={period.goal_kwh != null ? period.goal_kwh / s.totalDays : s.dailyAverageKwh}
+                referenceLabel={period.goal_kwh != null ? "ritmo diário da meta" : "sua média do período"}
+              />
+              <div style={{ display: "flex", gap: 14, marginTop: 6, fontSize: 11.5, color: "var(--color-text-muted)" }}>
+                <span>
+                  <span style={{ color: "#22C55E" }}>■</span> Dentro do ritmo
+                </span>
+                <span>
+                  <span style={{ color: "#EF4444" }}>■</span> Acima do ritmo
+                </span>
+                <span>
+                  <span style={{ color: "#5B6678" }}>┄</span>{" "}
+                  {period.goal_kwh != null ? "meta / dia" : "média / dia"}
+                </span>
+              </div>
+            </>
           ) : (
             <ReadingsTable readings={readings} onEdit={setEditingReading} onShowAll={() => setShowAllReadings(true)} />
           )}
