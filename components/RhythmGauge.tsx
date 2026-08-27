@@ -48,17 +48,17 @@ export default function RhythmGauge({
       : 0
   );
 
-  let statusColor = "var(--color-primary)";
+  let statusColor = "var(--color-primary-dark)";
   let statusLabel = expectedDailyKwh ? "no ritmo esperado" : "";
   if (expectedDailyKwh) {
     if (pct > 15) {
-      statusColor = "var(--color-alert)";
+      statusColor = "var(--color-alert-dark)";
       statusLabel = `${pct}% acima do esperado`;
     } else if (pct > 0) {
-      statusColor = "var(--color-accent)";
+      statusColor = "var(--color-accent-dark)";
       statusLabel = `${pct}% acima do esperado`;
     } else if (pct < 0) {
-      statusColor = "var(--color-primary)";
+      statusColor = "var(--color-primary-dark)";
       statusLabel = `${Math.abs(pct)}% abaixo do esperado`;
     }
   }

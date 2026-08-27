@@ -233,7 +233,7 @@ export default function DashboardPage() {
         >
           <AlertIcon
             size={20}
-            style={{ flexShrink: 0, marginTop: 1, color: s.alertLevel === "danger" ? "var(--color-alert)" : "#92660A" }}
+            style={{ flexShrink: 0, marginTop: 1, color: s.alertLevel === "danger" ? "var(--color-alert-dark)" : "var(--color-accent-dark)" }}
           />
           <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600 }}>{s.alertMessage}</p>
         </div>
@@ -333,7 +333,7 @@ export default function DashboardPage() {
               />
               <div style={{ display: "flex", gap: 14, marginTop: 6, fontSize: 11.5, color: "var(--color-text-muted)" }}>
                 <span>
-                  <span style={{ color: "#22C55E" }}>■</span> Dentro do ritmo
+                  <span style={{ color: "#16C76A" }}>■</span> Dentro do ritmo
                 </span>
                 <span>
                   <span style={{ color: "#EF4444" }}>■</span> Acima do ritmo
@@ -399,7 +399,7 @@ export default function DashboardPage() {
                   style={{
                     fontSize: 12.5,
                     fontWeight: 700,
-                    color: s.forecastFinalKwh > period.goal_kwh ? "var(--color-alert)" : "var(--color-primary-dark)",
+                    color: s.forecastFinalKwh > period.goal_kwh ? "var(--color-alert-dark)" : "var(--color-primary-dark)",
                   }}
                 >
                   {s.forecastFinalKwh > period.goal_kwh ? "+" : ""}

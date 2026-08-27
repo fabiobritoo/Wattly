@@ -126,7 +126,7 @@ function LogTable({ rows }: { rows: LogRow[] }) {
               {r.variationPct == null ? (
                 "—"
               ) : (
-                <span style={{ color: r.variationPct > 0 ? "var(--color-alert)" : "var(--color-primary-dark)" }}>
+                <span style={{ color: r.variationPct > 0 ? "var(--color-alert-dark)" : "var(--color-primary-dark)" }}>
                   {r.variationPct > 0 ? "↑" : "↓"} {Math.abs(Math.round(r.variationPct))}%
                 </span>
               )}

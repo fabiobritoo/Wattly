@@ -93,7 +93,7 @@ export default function DailyConsumptionChart({
               width={barW}
               height={barHeight}
               rx={1.5}
-              fill={overPace ? "#EF4444" : "#22C55E"}
+              fill={overPace ? "#EF4444" : "#16C76A"}
               opacity={overPace ? 0.85 : 0.8}
             />
             {useVerticalLabels ? (

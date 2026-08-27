@@ -573,7 +573,7 @@ export default function ConfiguracoesPage() {
           </p>
         )}
         {updateStatus.kind === "outdated" && (
-          <p style={{ fontSize: 13, color: "var(--color-alert)", marginBottom: 12 }}>
+          <p style={{ fontSize: 13, color: "var(--color-alert-dark)", marginBottom: 12 }}>
             Nova versão disponível no servidor: v{updateStatus.serverVersion}. Toque em "Forçar
             atualização" para carregar a versão mais recente.
           </p>

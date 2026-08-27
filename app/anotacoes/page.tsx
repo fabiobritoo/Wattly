@@ -13,7 +13,7 @@ const MONTH_ABBR = [
   "JUL", "AGO", "SET", "OUT", "NOV", "DEZ",
 ];
 
-const BADGE_COLORS = ["var(--color-primary)", "var(--color-secondary)"];
+const BADGE_COLORS = ["var(--color-primary-dark)", "var(--color-secondary)"];
 
 function badgeParts(iso: string) {
   const [, m, d] = iso.split("-");

@@ -221,7 +221,7 @@ export default function ReadingForm({
                 style={{
                   fontSize: 13,
                   fontWeight: 600,
-                  color: delta >= 0 ? "var(--color-primary-dark)" : "var(--color-alert)",
+                  color: delta >= 0 ? "var(--color-primary-dark)" : "var(--color-alert-dark)",
                   margin: "2px 0 0",
                 }}
               >
@@ -263,7 +263,7 @@ export default function ReadingForm({
                 type="button"
                 onClick={handleDelete}
                 disabled={saving || deleting}
-                style={{ color: "var(--color-alert)" }}
+                style={{ color: "var(--color-alert-dark)" }}
               >
                 {deleting ? "Excluindo..." : "Excluir leitura"}
               </button>

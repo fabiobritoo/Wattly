@@ -135,7 +135,7 @@ export default function NoteForm({
                 type="button"
                 onClick={handleDelete}
                 disabled={saving || deleting}
-                style={{ color: "var(--color-alert)" }}
+                style={{ color: "var(--color-alert-dark)" }}
               >
                 {deleting ? "Excluindo..." : "Excluir anotação"}
               </button>
