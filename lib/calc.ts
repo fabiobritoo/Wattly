@@ -221,10 +221,23 @@ export function computeSummary(period: Period, readings: Reading[]): Summary {
   }
 
   const dailyBreakdown = computeDailyBreakdown(period, readings);
+  // "Melhor dia" only makes sense for a day that's actually over — a day
+  // still in progress will always look artificially good just because
+  // fewer hours have had a chance to add consumption yet. A day counts as
+  // closed once there's a reading on a later calendar date (which is what
+  // gives that day's bucket its full, real 24h of measured consumption —
+  // see computeDailyBreakdown). "Pior dia" doesn't have this problem: a
+  // partial day that's already the highest is still a real, verified
+  // signal, not an artifact of less time having passed.
+  const latestDay = dateOnly(latest.reading_at);
+  const closedDays = dailyBreakdown.filter((d) => d.date < latestDay);
+
   let bestDay: DayConsumption | null = null;
   let worstDay: DayConsumption | null = null;
-  for (const day of dailyBreakdown) {
+  for (const day of closedDays) {
     if (!bestDay || day.consumption < bestDay.consumption) bestDay = day;
+  }
+  for (const day of dailyBreakdown) {
     if (!worstDay || day.consumption > worstDay.consumption) worstDay = day;
   }
 
