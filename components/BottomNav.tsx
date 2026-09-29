@@ -24,8 +24,18 @@ function NavLink({ href, label, Icon, active }: { href: string; label: string; I
   );
 }
 
+// The Anotações screen already has its own full-width "+ Nova anotação"
+// button doing a *different* thing (adds a note, not a reading). Showing
+// the global FAB there too means two unlabeled "+" controls stacked on
+// top of each other with different actions — confusing regardless of the
+// FAB's aria-label, since the ambiguity is visual, not just for screen
+// readers. Hide the FAB only on that one screen; keep the slot so the
+// nav items don't shift.
+const FAB_HIDDEN_ON = new Set(["/anotacoes"]);
+
 export default function BottomNav() {
   const pathname = usePathname();
+  const showFab = !FAB_HIDDEN_ON.has(pathname);
 
   return (
     <nav className="bottom-nav" aria-label="Navegação principal">
@@ -33,9 +43,7 @@ export default function BottomNav() {
         <NavLink key={item.href} {...item} active={pathname === item.href} />
       ))}
 
-      <div className="nav-fab-slot">
-        <GlobalAddReadingFab />
-      </div>
+      <div className="nav-fab-slot">{showFab && <GlobalAddReadingFab />}</div>
 
       {rightItems.map((item) => (
         <NavLink key={item.href} {...item} active={pathname === item.href} />

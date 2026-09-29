@@ -28,7 +28,13 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#16C76A",
+  // Matches the browser/PWA chrome (status bar, task switcher card) to
+  // the app's actual background in each mode — a plain green bar over a
+  // dark page reads as broken, not branded.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f9fc" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b1220" },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

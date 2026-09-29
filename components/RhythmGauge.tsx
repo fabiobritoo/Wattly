@@ -66,9 +66,9 @@ export default function RhythmGauge({
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
       <svg viewBox={`0 0 ${width} ${height}`} width="100%" style={{ maxWidth: 240 }}>
-        <path d={arcPath(-180, -60, r)} fill="none" stroke="#DCFCE7" strokeWidth="16" strokeLinecap="round" />
-        <path d={arcPath(-60, -20, r)} fill="none" stroke="#FEF3C7" strokeWidth="16" strokeLinecap="round" />
-        <path d={arcPath(-20, 0, r)} fill="none" stroke="#FEE2E2" strokeWidth="16" strokeLinecap="round" />
+        <path d={arcPath(-180, -60, r)} fill="none" stroke="var(--gauge-track-green)" strokeWidth="16" strokeLinecap="round" />
+        <path d={arcPath(-60, -20, r)} fill="none" stroke="var(--gauge-track-amber)" strokeWidth="16" strokeLinecap="round" />
+        <path d={arcPath(-20, 0, r)} fill="none" stroke="var(--gauge-track-red)" strokeWidth="16" strokeLinecap="round" />
 
         <line
           x1={cx}

@@ -11,7 +11,12 @@ const PAGE_HEIGHT = 841.89;
 const MARGIN = 50;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
 
-const GREEN = rgb(0x22 / 255, 0xc5 / 255, 0x5e / 255);
+// Decorative fill only (top band) — matches the current brand green
+// (--color-primary in app/globals.css). Never use this for text: at
+// ~2.3:1 on white it fails WCAG's 3:1 minimum for bold text. Text uses
+// GREEN_TEXT below instead (matches --color-primary-dark, ~5:1 on white).
+const GREEN = rgb(0x16 / 255, 0xc7 / 255, 0x6a / 255);
+const GREEN_TEXT = rgb(0x15 / 255, 0x80 / 255, 0x3d / 255);
 const TEXT = rgb(0x17 / 255, 0x20 / 255, 0x33 / 255);
 const MUTED = rgb(0x5b / 255, 0x66 / 255, 0x78 / 255);
 const BORDER = rgb(0xe6 / 255, 0xeb / 255, 0xf3 / 255);
@@ -254,7 +259,7 @@ export async function buildReportPdf(
         font: bold,
         color: TEXT,
       });
-      w.page.drawText(fmtReais(total), { x: col3, y: w.y - 14, size: 12, font: bold, color: GREEN });
+      w.page.drawText(fmtReais(total), { x: col3, y: w.y - 14, size: 12, font: bold, color: GREEN_TEXT });
       w.y -= 30;
 
       if (summary.currentCostReais != null) {

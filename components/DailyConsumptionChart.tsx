@@ -75,7 +75,7 @@ export default function DailyConsumptionChart({
           x2={width - padX}
           y1={padTop + chartH - f * chartH}
           y2={padTop + chartH - f * chartH}
-          stroke="#E6EBF3"
+          stroke="var(--color-border)"
           strokeWidth="1"
         />
       ))}
@@ -93,7 +93,7 @@ export default function DailyConsumptionChart({
               width={barW}
               height={barHeight}
               rx={1.5}
-              fill={overPace ? "#EF4444" : "#16C76A"}
+              fill={overPace ? "var(--color-alert)" : "var(--color-primary)"}
               opacity={overPace ? 0.85 : 0.8}
             />
             {useVerticalLabels ? (
@@ -101,14 +101,14 @@ export default function DailyConsumptionChart({
                 x={cx}
                 y={barTop - 3}
                 fontSize={valueFontSize}
-                fill="#5B6678"
+                fill="var(--color-text-muted)"
                 textAnchor="start"
                 transform={`rotate(-90 ${cx} ${barTop - 3})`}
               >
                 {fmtValueLabel(d.consumption)}
               </text>
             ) : (
-              <text x={cx} y={barTop - 4} fontSize={valueFontSize} fill="#5B6678" textAnchor="middle">
+              <text x={cx} y={barTop - 4} fontSize={valueFontSize} fill="var(--color-text-muted)" textAnchor="middle">
                 {fmtValueLabel(d.consumption)}
               </text>
             )}
@@ -122,7 +122,7 @@ export default function DailyConsumptionChart({
           x2={width - padX}
           y1={refY}
           y2={refY}
-          stroke="#5B6678"
+          stroke="var(--color-text-muted)"
           strokeWidth="1.5"
           strokeDasharray="4 3"
         />
@@ -135,7 +135,7 @@ export default function DailyConsumptionChart({
             x={xFor(i) + barW / 2}
             y={height - 6}
             fontSize="8"
-            fill="#5B6678"
+            fill="var(--color-text-muted)"
             textAnchor="middle"
           >
             {fmtDayLabel(d.date)}

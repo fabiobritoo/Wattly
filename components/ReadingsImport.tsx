@@ -75,7 +75,25 @@ export default function ReadingsImport({
 
       <div className="field">
         <label htmlFor="csv-file">Arquivo CSV</label>
-        <input id="csv-file" type="file" accept=".csv,text/csv" onChange={handleFile} />
+        {/* The native input is visually hidden (not display:none, which
+            would drop it from the tab order) — a styled label triggers it
+            instead, so the button text is ours in Portuguese ("Escolher
+            arquivo") and the chosen filename is ours to render, matching
+            every other control in the design system instead of stopping
+            at the OS/browser's own file-picker chrome. */}
+        <div className="file-picker">
+          <label htmlFor="csv-file" className="file-picker-btn">
+            Escolher arquivo
+          </label>
+          <span className="file-picker-name">{fileName ?? "Nenhum arquivo selecionado"}</span>
+          <input
+            id="csv-file"
+            type="file"
+            accept=".csv,text/csv"
+            onChange={handleFile}
+            className="file-picker-input"
+          />
+        </div>
       </div>
 
       {fileName && parseErrors.length > 0 && (

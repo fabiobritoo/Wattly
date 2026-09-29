@@ -13,7 +13,10 @@ const MONTH_ABBR = [
   "JUL", "AGO", "SET", "OUT", "NOV", "DEZ",
 ];
 
-const BADGE_COLORS = ["var(--color-primary-dark)", "var(--color-secondary)"];
+// Solid fill with white text on top (badge circle) — needs the "-strong"
+// token (constant deep tone), not "-dark" (which brightens for the TEXT
+// role in dark mode and would leave white text unreadable on top of it).
+const BADGE_COLORS = ["var(--color-primary-strong)", "var(--color-secondary-strong)"];
 
 function badgeParts(iso: string) {
   const [, m, d] = iso.split("-");

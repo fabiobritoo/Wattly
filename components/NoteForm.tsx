@@ -91,9 +91,14 @@ export default function NoteForm({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-handle" />
-        <h2 className="section-title" style={{ marginBottom: 14 }}>
-          {isEditing ? "Editar anotação" : "Nova anotação"}
-        </h2>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <h2 className="section-title" style={{ margin: 0 }}>
+            {isEditing ? "Editar anotação" : "Nova anotação"}
+          </h2>
+          <button type="button" className="link-btn" onClick={onClose}>
+            Cancelar
+          </button>
+        </div>
 
         <form onSubmit={handleSubmit}>
           <div className="field">

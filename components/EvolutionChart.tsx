@@ -68,7 +68,7 @@ export default function EvolutionChart({
       : null;
 
   const forecastAbove = goalKwh != null && forecastPoint != null && forecastPoint.v > goalKwh;
-  const forecastColor = goalKwh == null ? "#F5B91E" : forecastAbove ? "#EF4444" : "#16C76A";
+  const forecastColor = goalKwh == null ? "var(--color-accent)" : forecastAbove ? "var(--color-alert)" : "var(--color-primary)";
 
   const fmt = (v: number) => v.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
@@ -85,10 +85,10 @@ export default function EvolutionChart({
         aria-label="Gráfico de evolução do consumo, com zona segura, meta e projeção até o fim do período"
       >
         {gridLines.map((gy, i) => (
-          <line key={i} x1={padX} x2={width - padX} y1={gy} y2={gy} stroke="#E6EBF3" strokeWidth="1" />
+          <line key={i} x1={padX} x2={width - padX} y1={gy} y2={gy} stroke="var(--color-border)" strokeWidth="1" />
         ))}
 
-        {safeZonePath && <path d={safeZonePath} fill="#16C76A" opacity="0.08" />}
+        {safeZonePath && <path d={safeZonePath} fill="var(--color-primary)" opacity="0.08" />}
 
         {goalKwh != null && (
           <line
@@ -96,9 +96,10 @@ export default function EvolutionChart({
             x2={width - padX}
             y1={y(goalKwh)}
             y2={y(goalKwh)}
-            stroke="#94A3B8"
+            stroke="var(--color-text-muted)"
             strokeWidth="1.5"
-            strokeDasharray="4 4"
+            strokeDasharray="1.5 3.5"
+            strokeLinecap="round"
           />
         )}
 
@@ -108,15 +109,15 @@ export default function EvolutionChart({
             fill="none"
             stroke={forecastColor}
             strokeWidth="2.5"
-            strokeDasharray="5 4"
+            strokeDasharray="7 4"
             strokeLinecap="round"
           />
         )}
 
-        <path d={realPath} fill="none" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round" />
+        <path d={realPath} fill="none" stroke="var(--color-secondary)" strokeWidth="2.5" strokeLinecap="round" />
 
         {points.map((p, i) => (
-          <circle key={i} cx={x(p.t)} cy={y(p.v)} r="3.5" fill="#2563EB" />
+          <circle key={i} cx={x(p.t)} cy={y(p.v)} r="3.5" fill="var(--color-secondary)" />
         ))}
 
         {forecastPoint && (
@@ -130,7 +131,7 @@ export default function EvolutionChart({
                 textAnchor="middle"
                 fontSize="10.5"
                 fontWeight="700"
-                fill="#fff"
+                fill="var(--color-text)"
               >
                 {fmt(forecastPoint.v)} kWh
               </text>
@@ -141,7 +142,7 @@ export default function EvolutionChart({
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px", marginTop: 6, fontSize: 11.5, color: "var(--color-text-muted)" }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-          <span style={{ width: 12, height: 2.5, background: "#2563EB", borderRadius: 2, display: "inline-block" }} />
+          <span style={{ width: 12, height: 2.5, background: "var(--color-secondary)", borderRadius: 2, display: "inline-block" }} />
           Real
         </span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
@@ -162,14 +163,14 @@ export default function EvolutionChart({
                 style={{
                   width: 12,
                   height: 2,
-                  background: "repeating-linear-gradient(90deg, #94A3B8 0 4px, transparent 4px 7px)",
+                  background: "repeating-linear-gradient(90deg, var(--color-text-muted) 0 1.5px, transparent 1.5px 5px)",
                   display: "inline-block",
                 }}
               />
               Meta
             </span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-              <span style={{ width: 10, height: 10, background: "#16C76A", opacity: 0.35, borderRadius: 2, display: "inline-block" }} />
+              <span style={{ width: 10, height: 10, background: "var(--color-primary)", opacity: 0.35, borderRadius: 2, display: "inline-block" }} />
               Zona segura
             </span>
           </>

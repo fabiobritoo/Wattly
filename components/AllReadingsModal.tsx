@@ -1,5 +1,7 @@
 "use client";
 
+import { ChevronIcon } from "@/components/icons";
+
 type Reading = { id: number; reading_at: string; kwh_reading: number };
 
 function fmtKwh(v: number, decimals = 1) {
@@ -47,21 +49,25 @@ export default function AllReadingsModal({
                 <th>Data / hora</th>
                 <th>Leitura</th>
                 <th>Variação</th>
+                <th aria-hidden="true"></th>
               </tr>
             </thead>
             <tbody>
               {reversed.map((r) => (
                 <tr
                   key={r.id}
+                  className="readings-table-row"
                   onClick={() => {
                     onEdit(r);
                     onClose();
                   }}
-                  style={{ cursor: "pointer" }}
                 >
                   <td>{fmtDateTime(r.reading_at)}</td>
                   <td>{fmtKwh(r.kwh_reading)} kWh</td>
                   <td>{r.delta !== null ? `+${fmtKwh(r.delta)} kWh` : "—"}</td>
+                  <td className="readings-table-chevron">
+                    <ChevronIcon size={16} />
+                  </td>
                 </tr>
               ))}
             </tbody>

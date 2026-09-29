@@ -123,3 +123,15 @@ export function TargetIcon({ size = 24, ...props }: IconProps) {
     </svg>
   );
 }
+
+// Trailing chevron for rows that open something on tap (edit a reading,
+// drill into a period) — a purely visual "this row is tappable" signal,
+// independent of any caption text explaining it, per HIG's guidance that
+// an actionable row shows a disclosure affordance.
+export function ChevronIcon({ size = 24, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}

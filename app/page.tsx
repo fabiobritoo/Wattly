@@ -7,7 +7,7 @@ import DailyConsumptionChart from "@/components/DailyConsumptionChart";
 import ReadingForm from "@/components/ReadingForm";
 import RhythmGauge from "@/components/RhythmGauge";
 import AllReadingsModal from "@/components/AllReadingsModal";
-import { AlertIcon, ConsumptionIcon, ForecastIcon } from "@/components/icons";
+import { AlertIcon, ChevronIcon, ConsumptionIcon, ForecastIcon } from "@/components/icons";
 import { DATA_CHANGED_EVENT } from "@/lib/events";
 
 type Period = {
@@ -99,14 +99,18 @@ function ReadingsTable({
             <th>Data / hora</th>
             <th>Leitura</th>
             <th>Variação</th>
+            <th aria-hidden="true"></th>
           </tr>
         </thead>
         <tbody>
           {lastFive.map((r) => (
-            <tr key={r.id} onClick={() => onEdit(r)} style={{ cursor: "pointer" }}>
+            <tr key={r.id} className="readings-table-row" onClick={() => onEdit(r)}>
               <td>{fmtDateTime(r.reading_at)}</td>
               <td>{fmtKwh(r.kwh_reading, 1)} kWh</td>
               <td>{r.delta !== null ? `+${fmtKwh(r.delta, 1)} kWh` : "—"}</td>
+              <td className="readings-table-chevron">
+                <ChevronIcon size={16} />
+              </td>
             </tr>
           ))}
         </tbody>
@@ -333,13 +337,13 @@ export default function DashboardPage() {
               />
               <div style={{ display: "flex", gap: 14, marginTop: 6, fontSize: 11.5, color: "var(--color-text-muted)" }}>
                 <span>
-                  <span style={{ color: "#16C76A" }}>■</span> Dentro do ritmo
+                  <span style={{ color: "var(--color-primary)" }}>■</span> Dentro do ritmo
                 </span>
                 <span>
-                  <span style={{ color: "#EF4444" }}>■</span> Acima do ritmo
+                  <span style={{ color: "var(--color-alert)" }}>■</span> Acima do ritmo
                 </span>
                 <span>
-                  <span style={{ color: "#5B6678" }}>┄</span>{" "}
+                  <span style={{ color: "var(--color-text-muted)" }}>┄</span>{" "}
                   {period.goal_kwh != null ? "meta / dia" : "média / dia"}
                 </span>
               </div>
