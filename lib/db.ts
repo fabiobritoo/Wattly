@@ -65,6 +65,16 @@ export async function migrate() {
   // public lighting contribution (COSIP), small tax line items, etc. Added
   // once to the final estimate rather than prorated across consumption.
   await sql`ALTER TABLE periods ADD COLUMN IF NOT EXISTS fixed_fees_reais NUMERIC`;
+  // Goal is set as a daily rate (kWh/day) and extended to the period's
+  // actual length wherever it's used — periods vary from 28 to 31+ days,
+  // so a fixed total goal typed once doesn't carry over sensibly when a
+  // new period starts. `goal_kwh` (above) is kept in sync as the computed
+  // total at save time, for any code path that reads it directly (the PDF
+  // report's raw SQL, older periods saved before this column existed);
+  // live dashboard reads always recompute from goal_kwh_per_day so a
+  // period's goal stays correct even if its dates are edited afterwards
+  // without resaving the goal itself. See lib/calc.ts effectiveGoalKwh().
+  await sql`ALTER TABLE periods ADD COLUMN IF NOT EXISTS goal_kwh_per_day NUMERIC`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS readings (

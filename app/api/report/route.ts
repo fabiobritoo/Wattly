@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSql, migrate } from "@/lib/db";
 import { errorResponse } from "@/lib/api";
-import { type Period as CalcPeriod, type Reading as CalcReading } from "@/lib/calc";
+import { type Period as CalcPeriod, type Reading as CalcReading, effectiveGoalKwh } from "@/lib/calc";
 import { type TariffFlag } from "@/lib/tariffFlags";
 import { buildReportPdf, type ReportNote } from "@/lib/report";
 
@@ -20,12 +20,12 @@ export async function GET(req: Request) {
     const periodRows = periodIdParam
       ? await sql`
           SELECT id, start_date::text AS start_date, end_date::text AS end_date, initial_kwh, goal_kwh,
-                 tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais
+                 goal_kwh_per_day, tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais
           FROM periods WHERE id = ${periodIdParam}
         `
       : await sql`
           SELECT id, start_date::text AS start_date, end_date::text AS end_date, initial_kwh, goal_kwh,
-                 tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais
+                 goal_kwh_per_day, tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais
           FROM periods ORDER BY created_at DESC LIMIT 1
         `;
 
@@ -33,17 +33,20 @@ export async function GET(req: Request) {
       return errorResponse(new Error("Nenhum período encontrado."), 404);
     }
     const p = periodRows[0];
-    const period: CalcPeriod = {
+    const periodRaw: CalcPeriod = {
       id: p.id,
       start_date: p.start_date,
       end_date: p.end_date,
       initial_kwh: Number(p.initial_kwh),
       goal_kwh: p.goal_kwh === null ? null : Number(p.goal_kwh),
+      goal_kwh_per_day: p.goal_kwh_per_day === null ? null : Number(p.goal_kwh_per_day),
       tariff_rate: p.tariff_rate === null ? null : Number(p.tariff_rate),
       tariff_flag: (p.tariff_flag as TariffFlag | null) ?? null,
       flag_surcharge_rate: p.flag_surcharge_rate === null ? null : Number(p.flag_surcharge_rate),
       fixed_fees_reais: p.fixed_fees_reais === null ? null : Number(p.fixed_fees_reais),
     };
+    // goal_kwh extended to this period's actual length — see effectiveGoalKwh.
+    const period: CalcPeriod = { ...periodRaw, goal_kwh: effectiveGoalKwh(periodRaw) };
 
     const readingRows = await sql`
       SELECT id, period_id, to_char(reading_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS reading_at, kwh_reading

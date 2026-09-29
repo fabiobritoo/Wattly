@@ -5,7 +5,8 @@ export type Period = {
   start_date: string; // ISO date (yyyy-mm-dd)
   end_date: string;
   initial_kwh: number;
-  goal_kwh: number | null;
+  goal_kwh: number | null; // total for the period — kept as the computed cache; see effectiveGoalKwh()
+  goal_kwh_per_day: number | null; // what the person actually sets; source of truth when present
   tariff_rate: number | null; // R$ per kWh (sum of TUSD + TE from the bill)
   tariff_flag: TariffFlag | null;
   flag_surcharge_rate: number | null; // R$ per 100 kWh, only applies when tariff_flag !== "verde"
@@ -52,6 +53,29 @@ function daysBetween(a: Date, b: Date): number {
 function toDate(iso: string): Date {
   // Treat as UTC date-only to avoid timezone drift on day counts.
   return new Date(iso + "T00:00:00Z");
+}
+
+/** Inclusive day count for a period (day 1 = start_date itself). */
+export function totalDaysOf(period: Pick<Period, "start_date" | "end_date">): number {
+  return Math.max(daysBetween(toDate(period.start_date), toDate(period.end_date)) + 1, 1);
+}
+
+/**
+ * The goal a person actually sets is a daily rate — different periods run
+ * different lengths (28 to 31+ days), so a fixed total typed once doesn't
+ * carry over sensibly from one period to the next. This extends that daily
+ * rate to the period's ACTUAL length, recomputed fresh every time (not
+ * read from the cached total in `goal_kwh`), so the right number shows up
+ * even if the period's dates are edited after the goal was set. Periods
+ * saved before this feature existed only have `goal_kwh` (a plain total,
+ * with no daily rate behind it) — those fall back to that stored value
+ * unchanged.
+ */
+export function effectiveGoalKwh(period: Period): number | null {
+  if (period.goal_kwh_per_day != null) {
+    return Number(period.goal_kwh_per_day) * totalDaysOf(period);
+  }
+  return period.goal_kwh != null ? Number(period.goal_kwh) : null;
 }
 
 /** Extracts the UTC calendar date (yyyy-mm-dd) from an ISO datetime. */
@@ -158,11 +182,10 @@ function computeDailyBreakdown(period: Period, readings: Reading[]): DayConsumpt
  */
 export function computeSummary(period: Period, readings: Reading[]): Summary {
   const start = toDate(period.start_date);
-  const end = toDate(period.end_date);
   // Inclusive day counts (day 1 = start_date itself), matching how the
   // product spec talks about "10 dias decorridos, 21 restantes" for a
   // 31-day period — not a raw date subtraction, which would be off by one.
-  const totalDays = Math.max(daysBetween(start, end) + 1, 1);
+  const totalDays = totalDaysOf(period);
 
   const sorted = [...readings].sort((a, b) => (a.reading_at < b.reading_at ? -1 : 1));
 
@@ -209,7 +232,7 @@ export function computeSummary(period: Period, readings: Reading[]): Summary {
   const forecastRemainingKwh = dailyAverageKwh * daysRemaining;
   const forecastFinalKwh = accumulatedKwh + forecastRemainingKwh;
 
-  const goal = period.goal_kwh != null ? Number(period.goal_kwh) : null;
+  const goal = effectiveGoalKwh(period);
   const goalExceededNow = goal != null && accumulatedKwh > goal;
 
   let status: Summary["status"] = "dentro_do_esperado";

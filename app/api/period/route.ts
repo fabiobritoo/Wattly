@@ -1,12 +1,30 @@
 import { getSql, migrate } from "@/lib/db";
 import { jsonNoStore, errorResponse, normalizeNumericFields } from "@/lib/api";
+import { effectiveGoalKwh, totalDaysOf } from "@/lib/calc";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
 const VALID_FLAGS = new Set(["verde", "amarela", "vermelha_1", "vermelha_2"]);
-const PERIOD_NUMERIC_FIELDS = ["initial_kwh", "goal_kwh", "tariff_rate", "flag_surcharge_rate", "fixed_fees_reais"] as const;
+const PERIOD_NUMERIC_FIELDS = [
+  "initial_kwh",
+  "goal_kwh",
+  "goal_kwh_per_day",
+  "tariff_rate",
+  "flag_surcharge_rate",
+  "fixed_fees_reais",
+] as const;
+
+// goal_kwh is set as a daily rate and extended to the period's own length
+// (see lib/calc.ts effectiveGoalKwh) — every period row leaving this route
+// gets its goal_kwh overwritten with that recomputed total, so it's always
+// correct for the period's CURRENT dates even if they were edited after
+// the goal was last saved, without every consumer of this response having
+// to know about goal_kwh_per_day at all.
+function withEffectiveGoal<T extends Record<string, any>>(period: T): T {
+  return { ...period, goal_kwh: effectiveGoalKwh(period as any) };
+}
 
 export async function GET() {
   try {
@@ -14,12 +32,12 @@ export async function GET() {
     const sql = getSql();
     const rows = await sql`
       SELECT id, start_date::text AS start_date, end_date::text AS end_date, initial_kwh, goal_kwh,
-             tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais
+             goal_kwh_per_day, tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais
       FROM periods
       ORDER BY created_at DESC
       LIMIT 1
     `;
-    const period = rows[0] ? normalizeNumericFields(rows[0], PERIOD_NUMERIC_FIELDS) : null;
+    const period = rows[0] ? withEffectiveGoal(normalizeNumericFields(rows[0], PERIOD_NUMERIC_FIELDS)) : null;
     return jsonNoStore({ period });
   } catch (err) {
     return errorResponse(err);
@@ -35,7 +53,7 @@ export async function POST(req: Request) {
       start_date,
       end_date,
       initial_kwh,
-      goal_kwh,
+      goal_kwh_per_day,
       tariff_rate,
       tariff_flag,
       flag_surcharge_rate,
@@ -56,7 +74,15 @@ export async function POST(req: Request) {
     }
 
     const sql = getSql();
-    const goalValue = goal_kwh === "" || goal_kwh === undefined ? null : goal_kwh;
+    const goalPerDayValue =
+      goal_kwh_per_day === "" || goal_kwh_per_day === undefined || goal_kwh_per_day === null
+        ? null
+        : Number(goal_kwh_per_day);
+    // Store the extended total alongside the daily rate — the raw SQL in
+    // the PDF report reads goal_kwh directly, and this keeps that number
+    // correct without importing calc.ts into a query-only route.
+    const goalTotalValue =
+      goalPerDayValue != null ? goalPerDayValue * totalDaysOf({ start_date, end_date }) : null;
     const tariffRateValue = tariff_rate === "" || tariff_rate === undefined ? null : tariff_rate;
     const tariffFlagValue = tariff_flag || null;
     // The flag surcharge only makes sense (and is only stored) for non-"verde" flags.
@@ -73,7 +99,8 @@ export async function POST(req: Request) {
         SET start_date = ${start_date},
             end_date = ${end_date},
             initial_kwh = ${initial_kwh},
-            goal_kwh = ${goalValue},
+            goal_kwh = ${goalTotalValue},
+            goal_kwh_per_day = ${goalPerDayValue},
             tariff_rate = ${tariffRateValue},
             tariff_flag = ${tariffFlagValue},
             flag_surcharge_rate = ${flagSurchargeValue},
@@ -81,18 +108,18 @@ export async function POST(req: Request) {
             updated_at = now()
         WHERE id = ${id}
         RETURNING id, start_date::text AS start_date, end_date::text AS end_date, initial_kwh, goal_kwh,
-                  tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais
+                  goal_kwh_per_day, tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais
       `;
     } else {
       rows = await sql`
-        INSERT INTO periods (start_date, end_date, initial_kwh, goal_kwh, tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais)
-        VALUES (${start_date}, ${end_date}, ${initial_kwh}, ${goalValue}, ${tariffRateValue}, ${tariffFlagValue}, ${flagSurchargeValue}, ${fixedFeesValue})
+        INSERT INTO periods (start_date, end_date, initial_kwh, goal_kwh, goal_kwh_per_day, tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais)
+        VALUES (${start_date}, ${end_date}, ${initial_kwh}, ${goalTotalValue}, ${goalPerDayValue}, ${tariffRateValue}, ${tariffFlagValue}, ${flagSurchargeValue}, ${fixedFeesValue})
         RETURNING id, start_date::text AS start_date, end_date::text AS end_date, initial_kwh, goal_kwh,
-                  tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais
+                  goal_kwh_per_day, tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais
       `;
     }
 
-    return jsonNoStore({ period: normalizeNumericFields(rows[0], PERIOD_NUMERIC_FIELDS) });
+    return jsonNoStore({ period: withEffectiveGoal(normalizeNumericFields(rows[0], PERIOD_NUMERIC_FIELDS)) });
   } catch (err) {
     return errorResponse(err);
   }

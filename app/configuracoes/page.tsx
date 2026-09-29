@@ -12,12 +12,22 @@ type Period = {
   start_date: string;
   end_date: string;
   initial_kwh: number;
-  goal_kwh: number | null;
+  goal_kwh: number | null; // extended total, computed server-side — read-only here
+  goal_kwh_per_day: number | null;
   tariff_rate: number | null;
   tariff_flag: TariffFlag | null;
   flag_surcharge_rate: number | null;
   fixed_fees_reais: number | null;
 };
+
+/** Inclusive day count (day 1 = start_date itself), matching lib/calc.ts. */
+function totalDaysOf(startDate: string, endDate: string): number | null {
+  if (!startDate || !endDate) return null;
+  const start = new Date(startDate + "T00:00:00Z");
+  const end = new Date(endDate + "T00:00:00Z");
+  const days = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+  return days > 0 ? days : null;
+}
 
 type TariffDefaults = {
   tariff_rate: number | null;
@@ -46,7 +56,7 @@ export default function ConfiguracoesPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [initialKwh, setInitialKwh] = useState("");
-  const [goalKwh, setGoalKwh] = useState("");
+  const [goalKwhPerDay, setGoalKwhPerDay] = useState("");
   const [tariffRate, setTariffRate] = useState("");
   const [tariffFlag, setTariffFlag] = useState<TariffFlag>("verde");
   const [flagSurcharge, setFlagSurcharge] = useState("");
@@ -85,7 +95,18 @@ export default function ConfiguracoesPage() {
     setStartDate(p.start_date);
     setEndDate(p.end_date);
     setInitialKwh(String(p.initial_kwh));
-    setGoalKwh(p.goal_kwh != null ? String(p.goal_kwh) : "");
+    // Periods saved before the daily-goal field existed only have the old
+    // total (goal_kwh) — back-fill an implied daily rate from it so the
+    // field isn't empty and the setting carries forward instead of
+    // silently disappearing the first time this period is reopened.
+    if (p.goal_kwh_per_day != null) {
+      setGoalKwhPerDay(String(p.goal_kwh_per_day));
+    } else if (p.goal_kwh != null) {
+      const days = totalDaysOf(p.start_date, p.end_date);
+      setGoalKwhPerDay(days ? (p.goal_kwh / days).toFixed(2) : String(p.goal_kwh));
+    } else {
+      setGoalKwhPerDay("");
+    }
     setTariffRate(p.tariff_rate != null ? String(p.tariff_rate) : "");
     setTariffFlag(p.tariff_flag ?? "verde");
     setFlagSurcharge(p.flag_surcharge_rate != null ? String(p.flag_surcharge_rate) : "");
@@ -149,9 +170,14 @@ export default function ConfiguracoesPage() {
     }
     setEndDate("");
     setInitialKwh("");
-    setGoalKwh("");
-    // Always start a new period from the standing defaults, not from
-    // whatever the previous period happened to have.
+    // A daily goal is the one thing that's meant to carry over between
+    // periods of different lengths — that's the whole point of setting it
+    // as a rate instead of a fixed total — so it's kept from the period
+    // just archived instead of being cleared like the other period-specific
+    // fields above.
+    setGoalKwhPerDay(period?.goal_kwh_per_day != null ? String(period.goal_kwh_per_day) : "");
+    // Tariff/bandeira/fees still always start from the standing defaults,
+    // not from whatever the previous period happened to have.
     fillFormFromDefaults(defaults);
   }
 
@@ -175,7 +201,7 @@ export default function ConfiguracoesPage() {
           start_date: startDate,
           end_date: endDate,
           initial_kwh: Number(initialKwh),
-          goal_kwh: goalKwh ? Number(goalKwh) : null,
+          goal_kwh_per_day: goalKwhPerDay ? Number(goalKwhPerDay) : null,
           tariff_rate: tariffRate ? Number(tariffRate) : null,
           tariff_flag: tariffFlag,
           flag_surcharge_rate: flagSurcharge ? Number(flagSurcharge) : null,
@@ -331,16 +357,26 @@ export default function ConfiguracoesPage() {
             />
           </div>
           <div className="field">
-            <label htmlFor="goal">Meta de consumo para o período (kWh) — opcional</label>
+            <label htmlFor="goal">Meta de consumo (kWh por dia) — opcional</label>
             <input
               id="goal"
               type="number"
               inputMode="decimal"
               step="0.01"
-              placeholder="Ex: 230"
-              value={goalKwh}
-              onChange={(e) => setGoalKwh(e.target.value)}
+              placeholder="Ex: 11.5"
+              value={goalKwhPerDay}
+              onChange={(e) => setGoalKwhPerDay(e.target.value)}
             />
+            <p style={{ fontSize: 12, color: "var(--color-text-muted)", margin: "-2px 0 0" }}>
+              {(() => {
+                const days = totalDaysOf(startDate, endDate);
+                const perDay = Number(goalKwhPerDay);
+                if (goalKwhPerDay && days && perDay > 0) {
+                  return `= ${(perDay * days).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kWh ao longo dos ${days} dias deste período.`;
+                }
+                return "Definida por dia porque cada período pode ter uma duração diferente — o app estende esse valor pelos dias reais do período, automaticamente.";
+              })()}
+            </p>
           </div>
 
           <div className="field">

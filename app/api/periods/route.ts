@@ -1,6 +1,6 @@
 import { getSql, migrate } from "@/lib/db";
 import { jsonNoStore, errorResponse } from "@/lib/api";
-import { computeSummary } from "@/lib/calc";
+import { computeSummary, effectiveGoalKwh } from "@/lib/calc";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -12,8 +12,8 @@ export async function GET() {
     const sql = getSql();
 
     const periods = await sql`
-      SELECT id, start_date::text AS start_date, end_date::text AS end_date, initial_kwh, goal_kwh, created_at,
-             tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais
+      SELECT id, start_date::text AS start_date, end_date::text AS end_date, initial_kwh, goal_kwh,
+             goal_kwh_per_day, created_at, tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais
       FROM periods
       ORDER BY created_at DESC
     `;
@@ -33,18 +33,20 @@ export async function GET() {
           WHERE period_id = ${p.id}
           ORDER BY reading_at ASC
         `;
+        const periodForCalc = {
+          id: p.id,
+          start_date: p.start_date,
+          end_date: p.end_date,
+          initial_kwh: Number(p.initial_kwh),
+          goal_kwh: p.goal_kwh === null ? null : Number(p.goal_kwh),
+          goal_kwh_per_day: p.goal_kwh_per_day === null ? null : Number(p.goal_kwh_per_day),
+          tariff_rate: p.tariff_rate === null ? null : Number(p.tariff_rate),
+          tariff_flag: p.tariff_flag ?? null,
+          flag_surcharge_rate: p.flag_surcharge_rate === null ? null : Number(p.flag_surcharge_rate),
+          fixed_fees_reais: p.fixed_fees_reais === null ? null : Number(p.fixed_fees_reais),
+        };
         const summary = computeSummary(
-          {
-            id: p.id,
-            start_date: p.start_date,
-            end_date: p.end_date,
-            initial_kwh: Number(p.initial_kwh),
-            goal_kwh: p.goal_kwh === null ? null : Number(p.goal_kwh),
-            tariff_rate: p.tariff_rate === null ? null : Number(p.tariff_rate),
-            tariff_flag: p.tariff_flag ?? null,
-            flag_surcharge_rate: p.flag_surcharge_rate === null ? null : Number(p.flag_surcharge_rate),
-            fixed_fees_reais: p.fixed_fees_reais === null ? null : Number(p.fixed_fees_reais),
-          },
+          periodForCalc,
           readings.map((r: any) => ({
             id: r.id,
             period_id: r.period_id,
@@ -58,7 +60,7 @@ export async function GET() {
           start_date: p.start_date,
           end_date: p.end_date,
           initial_kwh: Number(p.initial_kwh),
-          goal_kwh: p.goal_kwh === null ? null : Number(p.goal_kwh),
+          goal_kwh: effectiveGoalKwh(periodForCalc),
           tariff_rate: p.tariff_rate === null ? null : Number(p.tariff_rate),
           isCurrent: p.id === currentId,
           summary,

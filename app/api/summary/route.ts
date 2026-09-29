@@ -1,12 +1,19 @@
 import { getSql, migrate } from "@/lib/db";
 import { jsonNoStore, errorResponse, normalizeNumericFields } from "@/lib/api";
-import { computeSummary } from "@/lib/calc";
+import { computeSummary, effectiveGoalKwh } from "@/lib/calc";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
-const PERIOD_NUMERIC_FIELDS = ["initial_kwh", "goal_kwh", "tariff_rate", "flag_surcharge_rate", "fixed_fees_reais"] as const;
+const PERIOD_NUMERIC_FIELDS = [
+  "initial_kwh",
+  "goal_kwh",
+  "goal_kwh_per_day",
+  "tariff_rate",
+  "flag_surcharge_rate",
+  "fixed_fees_reais",
+] as const;
 const READING_NUMERIC_FIELDS = ["kwh_reading"] as const;
 
 export async function GET() {
@@ -16,7 +23,7 @@ export async function GET() {
 
     const periods = await sql`
       SELECT id, start_date::text AS start_date, end_date::text AS end_date, initial_kwh, goal_kwh,
-             tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais
+             goal_kwh_per_day, tariff_rate, tariff_flag, flag_surcharge_rate, fixed_fees_reais
       FROM periods
       ORDER BY created_at DESC
       LIMIT 1
@@ -42,18 +49,20 @@ export async function GET() {
       LIMIT 1
     `;
 
+    const periodForCalc = {
+      id: period.id,
+      start_date: period.start_date,
+      end_date: period.end_date,
+      initial_kwh: Number(period.initial_kwh),
+      goal_kwh: period.goal_kwh === null ? null : Number(period.goal_kwh),
+      goal_kwh_per_day: period.goal_kwh_per_day === null ? null : Number(period.goal_kwh_per_day),
+      tariff_rate: period.tariff_rate === null ? null : Number(period.tariff_rate),
+      tariff_flag: period.tariff_flag ?? null,
+      flag_surcharge_rate: period.flag_surcharge_rate === null ? null : Number(period.flag_surcharge_rate),
+      fixed_fees_reais: period.fixed_fees_reais === null ? null : Number(period.fixed_fees_reais),
+    };
     const summary = computeSummary(
-      {
-        id: period.id,
-        start_date: period.start_date,
-        end_date: period.end_date,
-        initial_kwh: Number(period.initial_kwh),
-        goal_kwh: period.goal_kwh === null ? null : Number(period.goal_kwh),
-        tariff_rate: period.tariff_rate === null ? null : Number(period.tariff_rate),
-        tariff_flag: period.tariff_flag ?? null,
-        flag_surcharge_rate: period.flag_surcharge_rate === null ? null : Number(period.flag_surcharge_rate),
-        fixed_fees_reais: period.fixed_fees_reais === null ? null : Number(period.fixed_fees_reais),
-      },
+      periodForCalc,
       readings.map((r: any) => ({
         id: r.id,
         period_id: r.period_id,
@@ -63,7 +72,10 @@ export async function GET() {
     );
 
     return jsonNoStore({
-      period: normalizeNumericFields(period, PERIOD_NUMERIC_FIELDS),
+      period: {
+        ...normalizeNumericFields(period, PERIOD_NUMERIC_FIELDS),
+        goal_kwh: effectiveGoalKwh(periodForCalc),
+      },
       readings: readings.map((r: any) => normalizeNumericFields(r, READING_NUMERIC_FIELDS)),
       lastNote: notes[0] ?? null,
       summary,
